@@ -1,0 +1,54 @@
+{
+    "name": "email-sender",
+    "version": "1.0.0",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "build": "electron-builder",
+        "dist": "electron-builder --dir",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "description": "",
+    "devDependencies": {
+        "electron": "^36.4.0"
+    },
+    "dependencies": {
+        "electron-updater": "^6.6.2",
+        "url": "^0.11.4"
+    },
+    "build": {
+        "appId": "com.cubitdynamics.email-sender",
+        "productName": "email-sender",
+        "directories": {
+            "output": "dist"
+        },
+        "files": [
+            "main.js",
+            "preload.js",
+            "package.json",
+            "backend/**/*",
+            "frontend/dist/**/*"
+        ],
+        "win": {
+            "target": "nsis",
+            "icon": "build/icon.ico",
+            "signingHashAlgorithms": [
+                "sha256"
+            ]
+        },
+        "nsis": {
+            "installerIcon": "build/installerIcon.ico",
+            "uninstallerIcon": "build/uninstallerIcon.ico",
+            "allowToChangeInstallationDirectory": true,
+            "oneClick": false
+        },
+        "publish": {
+            "provider": "github",
+            "owner": "your-github-username",
+            "repo": "your-repo-name"
+        }
+    }
+}
