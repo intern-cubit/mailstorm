@@ -50,14 +50,12 @@ const SystemActivation = ({ onActivationSuccess }) => {
             return;
         }
 
-        // Prevent activation attempt if system info is not fully loaded or has errors
         if (motherboardSerial.startsWith('Error') || processorId.startsWith('Error') || isLoading) {
             setMessage('System information is not fully loaded or there was an error. Please wait or refresh.');
             return;
         }
 
         try {
-            // Send activation request to the backend
             const response = await fetch(`${API_BASE_URL}/activate`, {
                 method: 'POST',
                 headers: {
@@ -71,15 +69,13 @@ const SystemActivation = ({ onActivationSuccess }) => {
             });
 
             const data = await response.json();
-            setMessage(data.message); // Display the message from the backend
-            setIsActivated(data.success); // Update local activation status based on backend response
+            setMessage(data.message); 
+            setIsActivated(data.success); 
 
-            // If activation was successful, notify the parent component (App)
             if (data.success && onActivationSuccess) {
                 onActivationSuccess();
             }
         } catch (error) {
-            // Handle network or other errors during activation
             console.error('Error during activation:', error);
             setMessage('Failed to activate. Please check your connection and try again.');
             setIsActivated(false);

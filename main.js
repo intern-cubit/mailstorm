@@ -1,26 +1,22 @@
-const { app, BrowserWindow, dialog, ipcMain } = require("electron"); // Added ipcMain
+const { app, BrowserWindow, dialog, ipcMain } = require("electron");
 const path = require("path");
 const { spawn } = require("child_process");
 const fs = require("fs");
-const http = require("http"); // For polling backend readiness
-const { autoUpdater } = require("electron-updater"); // For auto-updates
-const log = require("electron-log"); // Recommended for better auto-updater logging
+const http = require("http");
+const { autoUpdater } = require("electron-updater");
+const log = require("electron-log");
 
 // --- Global Variables ---
 let backendProcess;
 let mainWindow;
 const BACKEND_PORT = 8000;
-const BACKEND_HEALTH_URL = `http://localhost:${BACKEND_PORT}/health`; // Backend health check endpoint
+const BACKEND_HEALTH_URL = `http://localhost:${BACKEND_PORT}/health`;
 
 // --- Auto-Updater Configuration & Logic ---
-// Configure electron-log for auto-updater
 log.transports.file.level = "info";
 autoUpdater.logger = log;
-
-// Auto-download updates once available
 autoUpdater.autoDownload = true;
 
-// Event listeners for autoUpdater
 autoUpdater.on("checking-for-update", () => {
     log.info("Checking for update...");
     if (mainWindow) {
@@ -35,7 +31,7 @@ autoUpdater.on("update-available", (info) => {
             "update-status",
             `Update available: v${info.version}`
         );
-        mainWindow.webContents.send("update-available", info.version); // Send new version info
+        mainWindow.webContents.send("update-available", info.version);
     }
 });
 
@@ -55,7 +51,7 @@ autoUpdater.on("download-progress", (progressObj) => {
     log_message += ` (${progressObj.transferred} / ${progressObj.total} bytes)`;
     log.info(log_message);
     if (mainWindow) {
-        mainWindow.webContents.send("update-progress", progressObj.percent); // Send progress to renderer
+        mainWindow.webContents.send("update-progress", progressObj.percent);
     }
 });
 
@@ -66,7 +62,7 @@ autoUpdater.on("update-downloaded", (info) => {
             "update-status",
             `Update downloaded: v${info.version}. Click 'Restart & Install' to apply.`
         );
-        mainWindow.webContents.send("update-downloaded"); // Tell renderer to show restart button
+        mainWindow.webContents.send("update-downloaded");
     }
 });
 
@@ -80,35 +76,42 @@ autoUpdater.on("error", (err) => {
     }
 });
 
-// IPC handler to restart and install the update from renderer
 ipcMain.on("restart_app", () => {
     log.info("Restarting app to install update...");
     autoUpdater.quitAndInstall();
 });
 
 // --- Backend Management Functions ---
-function startBackend() {
-    let isProd;
-    (async () => {
-        const electronIsDev = await import("electron-is-dev");
-        isProd = electronIsDev.default ? false : true; 
-    })();
-    const backendPath = isProd
-        ? path.join(process.resourcesPath, "fastapibackend.exe")
-        : path.join(__dirname, "backend", "dist", "fastapibackend.exe");
 
-    console.log(`[BACKEND] Backend path: ${backendPath}`);
-    if (!fs.existsSync(backendPath)) {
+/**
+ * Determines the correct path to the backend executable.
+ * In a packaged app, it's directly in the 'resources' folder due to 'extraResources' config.
+ * In development, it's in the 'backend/dist' relative to main.js.
+ */
+function getBackendExecutablePath() {
+    if (app.isPackaged) {
+        return path.join(process.resourcesPath, "fastapibackend.exe");
+    } else {
+        return path.join(__dirname, "backend", "dist", "fastapibackend.exe");
+    }
+}
+
+function startBackend() {
+    const backendExePath = getBackendExecutablePath();
+
+    console.log(`[BACKEND] Backend executable path: ${backendExePath}`);
+
+    if (!fs.existsSync(backendExePath)) {
         dialog.showErrorBox(
             "Backend Error",
-            `Backend executable not found at: ${backendPath}\nPlease ensure you have built your Python backend with PyInstaller.`
+            `Backend executable not found at: ${backendExePath}\nPlease ensure you have built your Python backend with PyInstaller and that it's correctly placed by Electron Builder (check 'extraResources' in package.json).`
         );
         app.quit();
-        return; // Exit if backend not found
+        return;
     }
 
-    console.log(`[BACKEND] Attempting to spawn backend from: ${backendPath}`);
-    backendProcess = spawn(backendPath);
+    console.log(`[BACKEND] Attempting to spawn backend from: ${backendExePath}`);
+    backendProcess = spawn(backendExePath);
 
     backendProcess.stdout.on("data", (data) => {
         console.log(`[BACKEND] stdout: ${data.toString().trim()}`);
@@ -121,7 +124,6 @@ function startBackend() {
     backendProcess.on("close", (code) => {
         console.log(`[BACKEND] process exited with code ${code}`);
         if (code !== 0 && code !== null) {
-            // Non-zero exit code usually means an error
             dialog.showErrorBox(
                 "Backend Crashed",
                 `The backend application exited unexpectedly with code ${code}. Please check console for errors.`
@@ -144,7 +146,6 @@ function startBackend() {
 
 // Function to poll backend readiness
 function pollBackendReady(callback, retries = 30, delay = 1000) {
-    // 30 retries * 1 sec = 30 seconds wait
     let attempts = 0;
 
     const check = () => {
@@ -155,7 +156,7 @@ function pollBackendReady(callback, retries = 30, delay = 1000) {
         const request = http.get(BACKEND_HEALTH_URL, (res) => {
             if (res.statusCode === 200) {
                 console.log("[BACKEND] Backend is ready!");
-                callback(); // Call the callback (createWindow) when ready
+                callback();
             } else {
                 console.warn(
                     `[BACKEND] Backend responded with status ${res.statusCode}. Retrying...`
@@ -187,9 +188,9 @@ function pollBackendReady(callback, retries = 30, delay = 1000) {
             }
         });
 
-        request.end(); // Important to end the request
+        request.end();
     };
-    check(); // Start the first check
+    check();
 }
 
 // --- Main Window Creation Function ---
@@ -219,45 +220,35 @@ function createWindow() {
         app.quit();
     }
 
-    // Open the DevTools to see any console errors from the frontend
-    // Comment out for production release if you don't want users to access DevTools
     mainWindow.webContents.openDevTools();
 }
 
 // --- Electron App Lifecycle Events ---
 app.on("ready", () => {
-    startBackend(); // 1. Start the backend process
+    startBackend();
 
-    // 2. Poll for backend readiness, then create the main window
     pollBackendReady(() => {
         createWindow();
-        // 3. Check for updates a few seconds after the window is created
-        // This gives the app a moment to render and ensures the auto-updater is ready.
         setTimeout(() => {
-            autoUpdater.checkForUpdatesAndNotify(); // Or checkForUpdates() for manual UI
-        }, 5000); // Wait 5 seconds before checking for updates
+            autoUpdater.checkForUpdatesAndNotify();
+        }, 5000);
     });
 
-    // Handle macOS specific behavior when app is activated (e.g., from dock)
     app.on("activate", function () {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
 });
 
-// Quit when all windows are closed, except on macOS (Cmd+Q)
 app.on("window-all-closed", () => {
     if (process.platform !== "darwin") {
         app.quit();
     }
 });
 
-// Terminate backend process when Electron app is quitting
 app.on("will-quit", () => {
     if (backendProcess) {
         console.log("Terminating backend process...");
-        // SIGTERM is a graceful termination signal
         backendProcess.kill("SIGTERM");
-        // You might add a timeout and then SIGKILL if it doesn't close fast enough
         setTimeout(() => {
             if (!backendProcess.killed) {
                 console.log(
@@ -265,6 +256,6 @@ app.on("will-quit", () => {
                 );
                 backendProcess.kill("SIGKILL");
             }
-        }, 5000); // Give it 5 seconds to gracefully exit
+        }, 5000);
     }
 });
