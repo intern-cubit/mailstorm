@@ -88,12 +88,10 @@ ipcMain.on("restart_app", () => {
 
 // --- Backend Management Functions ---
 function startBackend() {
-    const backendPath = path.join(
-        __dirname,
-        "backend",
-        "dist",
-        "fastapibackend.exe"
-    );
+    const isProd = require("electron-is-dev") ? false : true;
+    const backendPath = isProd
+        ? path.join(process.resourcesPath, "fastapibackend.exe")
+        : path.join(__dirname, "backend", "dist", "fastapibackend.exe");
 
     if (!fs.existsSync(backendPath)) {
         dialog.showErrorBox(
