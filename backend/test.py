@@ -27,8 +27,8 @@ def generate_activation_key(macId: str, motherboardSerial: str) -> str:
     return formatted_key
 
 if __name__ == "__main__":
-    macId = "BFEBFBFF000906A4"
-    motherboardSerial = "PPVCK048JH58C7"
+    macId = "178BFBFF00860F01"
+    motherboardSerial = "L834NRCX00DUJ6MB"
     
     activation_key = generate_activation_key(macId, motherboardSerial)
     print(f"Generated Activation Key: {activation_key}")
