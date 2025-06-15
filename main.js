@@ -88,11 +88,16 @@ ipcMain.on("restart_app", () => {
 
 // --- Backend Management Functions ---
 function startBackend() {
-    const isProd = require("electron-is-dev") ? false : true;
+    let isProd;
+    (async () => {
+        const electronIsDev = await import("electron-is-dev");
+        isProd = electronIsDev.default ? false : true; 
+    })();
     const backendPath = isProd
         ? path.join(process.resourcesPath, "fastapibackend.exe")
         : path.join(__dirname, "backend", "dist", "fastapibackend.exe");
 
+    console.log(`[BACKEND] Backend path: ${backendPath}`);
     if (!fs.existsSync(backendPath)) {
         dialog.showErrorBox(
             "Backend Error",
