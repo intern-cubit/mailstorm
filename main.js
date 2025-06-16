@@ -15,7 +15,8 @@ const BACKEND_HEALTH_URL = `http://localhost:${BACKEND_PORT}/health`;
 // --- Auto-Updater Configuration & Logic ---
 log.transports.file.level = "info";
 autoUpdater.logger = log;
-autoUpdater.autoDownload = true;
+// --- IMPORTANT CHANGE: Disable automatic download
+autoUpdater.autoDownload = false;
 
 autoUpdater.on("checking-for-update", () => {
     log.info("Checking for update...");
@@ -29,7 +30,7 @@ autoUpdater.on("update-available", (info) => {
     if (mainWindow) {
         mainWindow.webContents.send(
             "update-status",
-            `Update available: v${info.version}`
+            `Update available: v${info.version}. Click 'Download & Install' to proceed.` // Updated status message
         );
         mainWindow.webContents.send("update-available", info.version);
     }
@@ -81,7 +82,13 @@ ipcMain.on("restart_app", () => {
     autoUpdater.quitAndInstall();
 });
 
-// --- Backend Management Functions ---
+// --- NEW: IPC handler to trigger update download ---
+ipcMain.on("download_update", () => {
+    log.info("User initiated update download.");
+    autoUpdater.downloadUpdate();
+});
+
+// --- Backend Management Functions (rest of your backend functions remain the same) ---
 
 /**
  * Determines the correct path to the backend executable.
@@ -110,7 +117,9 @@ function startBackend() {
         return;
     }
 
-    console.log(`[BACKEND] Attempting to spawn backend from: ${backendExePath}`);
+    console.log(
+        `[BACKEND] Attempting to spawn backend from: ${backendExePath}`
+    );
     backendProcess = spawn(backendExePath);
 
     backendProcess.stdout.on("data", (data) => {
@@ -248,14 +257,45 @@ app.on("window-all-closed", () => {
 app.on("will-quit", () => {
     if (backendProcess) {
         console.log("Terminating backend process...");
-        backendProcess.kill("SIGTERM");
-        setTimeout(() => {
-            if (!backendProcess.killed) {
+
+        let killTimeout;
+        const checkAndKill = () => {
+            // Check if the process is still running
+            // process.kill(pid, 0) attempts to send a signal of 0, which only checks for the existence of the process.
+            // It will throw an error if the process does not exist.
+            try {
+                process.kill(backendProcess.pid, 0);
+                // If no error, process is still running, send SIGKILL
                 console.log(
-                    "Backend process did not terminate, sending SIGKILL..."
+                    "Backend process still running, sending SIGKILL..."
                 );
                 backendProcess.kill("SIGKILL");
+            } catch (e) {
+                // Process does not exist (already terminated)
+                console.log("Backend process already terminated.");
+            } finally {
+                clearTimeout(killTimeout); // Clear any pending timeout
             }
-        }, 5000);
+        };
+
+        // Attempt to gracefully terminate first
+        backendProcess.kill("SIGTERM");
+        console.log("Sent SIGTERM to backend process.");
+
+        // Set a timeout to forcefully kill if it doesn't exit gracefully
+        killTimeout = setTimeout(checkAndKill, 5000); // Give it 5 seconds to respond to SIGTERM
+
+        // Listen for the 'close' event to know when it has actually exited
+        backendProcess.on("close", (code) => {
+            console.log(`Backend process closed with code ${code}`);
+            clearTimeout(killTimeout); // Clear the forceful kill timeout if it closes gracefully
+        });
+
+        backendProcess.on("error", (err) => {
+            console.error(
+                `Error with backend process during termination: ${err.message}`
+            );
+            clearTimeout(killTimeout);
+        });
     }
 });

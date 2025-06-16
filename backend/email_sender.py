@@ -46,7 +46,8 @@ def safe_print(message):
     logger.info(message)
 # -----------------------------------------------------------------------------------
 
-DELAY_BETWEEN_EMAILS = (5, 15) # Delay between sending each email
+# Reduced delay between sending each email to a maximum of 5 seconds
+DELAY_BETWEEN_EMAILS = (1, 5) 
 
 def replace_variables_in_message(template: str, row_data: dict, variables: List[str]) -> str:
     """
@@ -70,8 +71,8 @@ def send_single_email(
     body: str,
     smtp_server: str,
     smtp_port: int,
-    html_content: bool, # New parameter
-    bcc_mode: bool,     # New parameter
+    html_content: bool, 
+    bcc_mode: bool,     
     attachment_path: Optional[str] = None
 ) -> bool:
     """
@@ -113,10 +114,6 @@ def send_single_email(
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls()
             server.login(sender_email, sender_password)
-            
-            # Use send_message which correctly handles To/Cc/Bcc headers
-            # The 'send_message' method sends to all recipients in 'To', 'Cc', 'Bcc' headers.
-            # If bcc_mode is true, the 'To' header will be empty, and the recipient will be in 'Bcc'.
             server.send_message(msg)
             
         send_type = "BCC" if bcc_mode else "TO"
@@ -142,15 +139,16 @@ def send_emails_from_dataframe_enhanced(
     sender_password: str,
     smtp_server: str,
     smtp_port: int,
-    html_content: bool, # New parameter
-    bcc_mode: bool,     # New parameter
+    html_content: bool, 
+    bcc_mode: bool,     
     media_path: Optional[str] = None
-) -> Dict[str, int]: # Returns a dictionary with send results
+) -> Dict[str, List[str]]: # Changed return type to include lists of emails
     """
     Send personalized emails using dynamic variables from CSV.
+    Returns a dictionary with lists of successful and failed email addresses.
     """
-    successful_sends = 0
-    failed_sends = 0
+    successful_emails: List[str] = []
+    failed_emails: List[str] = []
 
     safe_print(f"📧 Starting email campaign from {sender_email} (HTML: {html_content}, BCC: {bcc_mode})...")
 
@@ -159,12 +157,12 @@ def send_emails_from_dataframe_enhanced(
 
         if not receiver_email:
             safe_print(f"⚠️ Skipping row {index+1}: 'email' column is empty or missing.")
-            failed_sends += 1
+            failed_emails.append(f"Row {index+1} (no email address found)")
             continue
 
         if "@" not in receiver_email or "." not in receiver_email.split("@")[-1]:
             safe_print(f"⚠️ Skipping invalid email address: '{receiver_email}' (row {index+1})")
-            failed_sends += 1
+            failed_emails.append(f"{receiver_email} (invalid format)")
             continue
 
         row_dict = row.to_dict()
@@ -188,14 +186,15 @@ def send_emails_from_dataframe_enhanced(
         )
 
         if success:
-            successful_sends += 1
+            successful_emails.append(receiver_email)
         else:
-            failed_sends += 1
+            failed_emails.append(receiver_email)
 
+        # Apply delay between emails
         sleep_time = random.randint(*DELAY_BETWEEN_EMAILS)
         safe_print(f"⏱️ Sleeping {sleep_time}s before next email...\n")
         time.sleep(sleep_time)
 
     safe_print("🎉 Email campaign finished!")
-    safe_print(f"Summary: {successful_sends} emails sent successfully, {failed_sends} failed.")
-    return {"successful_sends": successful_sends, "failed_sends": failed_sends}
+    safe_print(f"Summary: {len(successful_emails)} emails sent successfully, {len(failed_emails)} failed.")
+    return {"successful_emails": successful_emails, "failed_emails": failed_emails}

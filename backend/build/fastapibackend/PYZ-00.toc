@@ -188,6 +188,10 @@
    'D:\\Codes\\CuBIT '
    'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\anyio\\to_thread.py',
    'PYMODULE'),
+  ('appdirs',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\appdirs.py',
+   'PYMODULE'),
   ('argparse',
    'C:\\Program '
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\\Lib\\argparse.py',
@@ -648,6 +652,26 @@
    'C:\\Program '
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\\Lib\\email\\message.py',
    'PYMODULE'),
+  ('email.mime',
+   'C:\\Program '
+   'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\\Lib\\email\\mime\\__init__.py',
+   'PYMODULE'),
+  ('email.mime.base',
+   'C:\\Program '
+   'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\\Lib\\email\\mime\\base.py',
+   'PYMODULE'),
+  ('email.mime.multipart',
+   'C:\\Program '
+   'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\\Lib\\email\\mime\\multipart.py',
+   'PYMODULE'),
+  ('email.mime.nonmultipart',
+   'C:\\Program '
+   'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\\Lib\\email\\mime\\nonmultipart.py',
+   'PYMODULE'),
+  ('email.mime.text',
+   'C:\\Program '
+   'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\\Lib\\email\\mime\\text.py',
+   'PYMODULE'),
   ('email.parser',
    'C:\\Program '
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\\Lib\\email\\parser.py',
@@ -663,6 +687,9 @@
   ('email.utils',
    'C:\\Program '
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\\Lib\\email\\utils.py',
+   'PYMODULE'),
+  ('email_sender',
+   'D:\\Codes\\CuBIT Internship\\email_marketing\\backend\\email_sender.py',
    'PYMODULE'),
   ('fastapi',
    'D:\\Codes\\CuBIT '

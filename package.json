@@ -1,6 +1,6 @@
 {
-    "name": "email-sender",
-    "version": "1.0.3",
+    "name": "mailstorm",
+    "version": "0.0.1",
     "main": "main.js",
     "scripts": {
         "start": "electron .",
@@ -22,8 +22,8 @@
         "electron-updater": "^6.6.2"
     },
     "build": {
-        "appId": "com.cubitdynamics.email-sender",
-        "productName": "email-sender",
+        "appId": "com.cubitdynamics.mailstorm",
+        "productName": "mailStorm",
         "directories": {
             "output": "dist"
         },
@@ -61,7 +61,9 @@
         "publish": {
             "provider": "github",
             "owner": "intern-cubit",
-            "repo": "WA_BOMB-"
+            "repo": "mailstorm",
+            "releaseType": "release",
+            "publishAutoUpdate": true
         }
     }
 }

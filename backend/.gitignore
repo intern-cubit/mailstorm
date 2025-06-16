@@ -59,7 +59,7 @@ Thumbs.db
 # So, ensure they exist locally when you run `npm run build`.
 
 # The core problem from the screenshot:
-# C:\Users\leela\AppData\Local\Programs\email-sender\resources\app.a...\fastapibackend.exe ENOENT
+# C:\Users\leela\AppData\Local\Programs\mail\resources\app.a...\fastapibackend.exe ENOENT
 # This is NOT about .gitignore. This is about electron-builder *not packaging* the file.
 # My previous solution for `files` array in `package.json` addresses this.
 # .gitignore prevents it from being *version controlled*.

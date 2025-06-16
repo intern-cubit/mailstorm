@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { MessageSquare, Send, FileText, Image, Users, Zap, CheckCircle, X, Info, Loader2, Mail, AlertCircle, ChevronLeft, ChevronRight, Settings, Edit3 } from 'lucide-react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { MessageSquare, Send, FileText, Image, Users, Zap, CheckCircle, X, Info, Loader2, Mail, AlertCircle, ChevronLeft, ChevronRight, Settings, Edit3, Search } from 'lucide-react';
 
 import Header from '../components/Header';
 import StatsCard from '../components/StatsCard';
@@ -25,7 +25,7 @@ function Dashboard() {
     const [showPreview, setShowPreview] = useState(false);
     const [selectedVariables, setSelectedVariables] = useState([]);
 
-    // New states for email configuration
+    // States for email configuration
     const [senderEmail, setSenderEmail] = useState("");
     const [senderPassword, setSenderPassword] = useState("");
     const [smtpServer, setSmtpServer] = useState("");
@@ -33,29 +33,34 @@ function Dashboard() {
     const [isHtmlEmail, setIsHtmlEmail] = useState(false); // Default to plain text (false)
     const [isBccMode, setIsBccMode] = useState(false);
 
-    // New states for send results
-    const [successfulSends, setSuccessfulSends] = useState(0);
-    const [failedSends, setFailedSends] = useState(0);
-    const [lastCampaignResult, setLastCampaignResult] = useState(null);
+    // States for campaign results
+    const [successfulSends, setSuccessfulSends] = useState(0); // Count
+    const [failedSends, setFailedSends] = useState(0);     // Count
+    const [lastCampaignResult, setLastCampaignResult] = useState(null); // Summary object
+
+    // States for detailed results lists
+    const [successfulEmailsList, setSuccessfulEmailsList] = useState([]);
+    const [failedEmailsList, setFailedEmailsList] = useState([]);
+    const [showDetailedResults, setShowDetailedResults] = useState(false);
+
+    // NEW: States for filtering and searching emails
+    const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'successful', 'failed'
+    const [searchTerm, setSearchTerm] = useState('');
+
 
     const steps = [
-        { id: 1, title: "Upload Contacts", icon: FileText, description: "Import your contact list" },
+        { id: 1, title: "Upload Emails", icon: FileText, description: "Import your contact list" },
         { id: 2, title: "Email Settings", icon: Settings, description: "Configure sender details" },
         { id: 3, title: "Create & Send", icon: Send, description: "Write and launch campaign" }
     ];
 
     // Update selected variables when message or subject changes
     useEffect(() => {
-        // Extract variables from both message and subject, regardless of HTML or plain text
         const extractVariables = (text) => {
             if (!text) return [];
-            // Regex to find {variable} patterns.
-            // It ensures variable name starts with a letter or underscore,
-            // and contains only alphanumeric characters or underscores.
             const regex = /{([a-zA-Z_][a-zA-Z0-9_]*)}/g;
             const matches = text.match(regex);
             if (matches) {
-                // Map to get just the captured group (the variable name without braces)
                 return matches.map(v => v.slice(1, -1));
             }
             return [];
@@ -64,52 +69,44 @@ function Dashboard() {
         const messageVars = extractVariables(message);
         const subjectVars = extractVariables(subject);
 
-        // Combine and get unique variables
         setSelectedVariables(Array.from(new Set([...messageVars, ...subjectVars])));
     }, [message, subject]);
 
-    // Handles toggling between plain text and HTML modes
     const handleToggleHtml = useCallback((isHtml) => {
         setIsHtmlEmail(isHtml);
-        if (!isHtml) { // Switching to Plain Text mode
+        if (!isHtml) {
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = message;
-            setMessage(tempDiv.innerText); // Convert HTML to plain text for textarea
+            setMessage(tempDiv.innerText);
         }
     }, [message]);
 
     const handleCsvUpload = useCallback(async (e) => {
         const file = e.target.files[0];
-        e.target.value = null; // Clear input to allow re-uploading the same file
+        e.target.value = null;
 
         setError("");
         setStatus("");
         setIsLoading(true);
+        setCsvData(null);
+        setCsvColumns([]);
+        setTotalRows(0);
+        setShowPreview(false);
+        setCsvFile(null);
 
         if (!file) {
-            setCsvFile(null);
-            setCsvData(null);
-            setCsvColumns([]);
-            setTotalRows(0);
-            setShowPreview(false);
             setIsLoading(false);
             return;
         }
 
         if (!file.name.toLowerCase().endsWith('.csv')) {
-            setError("Please upload a CSV file (e.g., contacts.csv).");
-            setCsvFile(null);
-            setCsvData(null);
-            setCsvColumns([]);
-            setTotalRows(0);
-            setShowPreview(false);
+            setError("Please upload a CSV file (e.g., Emails.csv).");
             setIsLoading(false);
             return;
         }
 
         setCsvFile(file);
         setStatus("Processing CSV file...");
-        setShowPreview(false);
 
         try {
             const formData = new FormData();
@@ -130,13 +127,15 @@ function Dashboard() {
             setCsvColumns(result.columns);
             setShowPreview(true);
             setTotalRows(result.total_rows || 0);
-            setStatus(`CSV processed successfully! ${result.total_rows} contacts found.`);
+            setStatus(`CSV processed successfully! ${result.total_rows} Emails found.`);
 
-            // Auto-select 'email' variable if available in columns
             if (result.columns.some(col => col.toLowerCase() === 'email')) {
                 const emailCol = result.columns.find(col => col.toLowerCase() === 'email');
                 setSelectedVariables(prev => (prev.includes(emailCol) ? prev : [...prev, emailCol]));
+            } else {
+                setError("Your CSV file must contain an 'email' column.");
             }
+
         } catch (err) {
             setError("Error processing CSV: " + err.message);
             setCsvFile(null);
@@ -155,7 +154,6 @@ function Dashboard() {
         e.target.value = null;
     }, []);
 
-    // This function is for inserting variables into the plain text `textarea`
     const insertVariableIntoMessage = useCallback((variable) => {
         const newVar = `{${variable}}`;
         const textarea = document.getElementById('email-message-textarea');
@@ -173,7 +171,6 @@ function Dashboard() {
         }
     }, [message, setMessage]);
 
-    // This function is for inserting variables into the Subject input field
     const insertVariableIntoSubject = useCallback((variable) => {
         const newVar = `{${variable}}`;
         const input = document.getElementById('email-subject');
@@ -196,6 +193,11 @@ function Dashboard() {
         setStatus("");
         setIsLoading(true);
         setLastCampaignResult(null);
+        setSuccessfulEmailsList([]);
+        setFailedEmailsList([]);
+        setShowDetailedResults(false);
+        setFilterStatus('all'); // Reset filter
+        setSearchTerm(''); // Reset search term
 
         if (!csvFile) {
             setError("Please upload your Contact List (CSV) first.");
@@ -217,8 +219,9 @@ function Dashboard() {
             setIsLoading(false);
             return;
         }
-        if ((message.includes('{') || subject.includes('{')) && selectedVariables.some(v => !csvColumns.includes(v))) {
-            setError("You have variables in your email content/subject that do not match CSV columns. Please check.");
+        const missingVars = selectedVariables.filter(v => !csvColumns.includes(v));
+        if (missingVars.length > 0) {
+            setError(`You have variables in your email content/subject that do not match CSV columns: ${missingVars.join(', ')}. Please check.`);
             setIsLoading(false);
             return;
         }
@@ -260,12 +263,17 @@ function Dashboard() {
 
             const result = await response.json();
             setStatus(`✅ Campaign completed successfully! ${result.detail}`);
-            setSuccessfulSends(result.successful_sends);
-            setFailedSends(result.failed_sends);
+            setSuccessfulSends(result.successful_emails.length);
+            setFailedSends(result.failed_emails.length);
+
+            setSuccessfulEmailsList(result.successful_emails);
+            setFailedEmailsList(result.failed_emails);
+            setShowDetailedResults(true);
+
             setLastCampaignResult({
-                successful: result.successful_sends,
-                failed: result.failed_sends,
-                total: result.successful_sends + result.failed_sends,
+                successful: result.successful_emails.length,
+                failed: result.failed_emails.length,
+                total: result.successful_emails.length + result.failed_emails.length,
                 timestamp: new Date().toLocaleString()
             });
 
@@ -274,6 +282,9 @@ function Dashboard() {
             setStatus("");
             setSuccessfulSends(0);
             setFailedSends(0);
+            setSuccessfulEmailsList([]);
+            setFailedEmailsList([]);
+            setShowDetailedResults(false);
         } finally {
             setIsLoading(false);
         }
@@ -295,21 +306,45 @@ function Dashboard() {
     const nextStep = () => {
         if (currentStep < 3 && canProceedToNextStep()) {
             setCurrentStep(currentStep + 1);
-            setError(""); // Clear errors when moving to next step
+            setError("");
         }
     };
 
     const prevStep = () => {
         if (currentStep > 1) {
             setCurrentStep(currentStep - 1);
-            setError(""); // Clear errors when moving to previous step
+            setError("");
         }
     };
 
     const goToStep = (stepNumber) => {
         setCurrentStep(stepNumber);
-        setError(""); // Clear errors when jumping to a step
+        setError("");
     };
+
+    // NEW: Function to filter and search emails
+    const filterAndSearchEmails = useCallback(() => {
+        let emailsToDisplay = [];
+
+        if (filterStatus === 'successful') {
+            emailsToDisplay = successfulEmailsList;
+        } else if (filterStatus === 'failed') {
+            emailsToDisplay = failedEmailsList;
+        } else { // 'all'
+            emailsToDisplay = [...successfulEmailsList, ...failedEmailsList];
+        }
+
+        if (searchTerm) {
+            const lowerCaseSearchTerm = searchTerm.toLowerCase();
+            emailsToDisplay = emailsToDisplay.filter(email =>
+                email.toLowerCase().includes(lowerCaseSearchTerm)
+            );
+        }
+        return emailsToDisplay;
+    }, [filterStatus, searchTerm, successfulEmailsList, failedEmailsList]);
+
+    const displayedEmails = useMemo(() => filterAndSearchEmails(), [filterAndSearchEmails]);
+
 
     const renderStepContent = () => {
         switch (currentStep) {
@@ -317,7 +352,7 @@ function Dashboard() {
                 return (
                     <div className="space-y-6">
                         <div className="text-center mb-8">
-                            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Upload Your Contacts</h2>
+                            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Upload Your Emails</h2>
                             <p className="text-gray-600 dark:text-gray-400">Import your contact list and optional media files</p>
                         </div>
 
@@ -325,7 +360,7 @@ function Dashboard() {
                             <div className="space-y-6">
                                 <FileUpload
                                     title="Contact List (CSV)"
-                                    description="Upload your contacts. Must contain an 'email' column."
+                                    description="Upload your Emails. Must contain an 'email' column."
                                     icon={FileText}
                                     file={csvFile}
                                     acceptedTypes=".csv"
@@ -349,7 +384,7 @@ function Dashboard() {
                                         <li>CSV file must contain an 'email' column</li>
                                         <li>Supported formats: .csv files only</li>
                                         <li>Media files: images, videos, PDFs, or documents</li>
-                                        <li>Preview your contacts before proceeding</li>
+                                        <li>Preview your Emails before proceeding</li>
                                     </ul>
                                 </div>
                             </div>
@@ -421,6 +456,7 @@ function Dashboard() {
                                 onToggleHtml={handleToggleHtml}
                                 columns={csvColumns}
                                 onInsertVariable={insertVariableIntoMessage}
+                                onInsertSubjectVariable={insertVariableIntoSubject}
                                 selectedVariables={selectedVariables}
                                 isBccMode={isBccMode}
                                 onToggleBcc={setIsBccMode}
@@ -432,8 +468,8 @@ function Dashboard() {
                             <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Campaign Summary</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                 <div>
-                                    <p className="text-gray-600 dark:text-gray-400">Contacts:</p>
-                                    <p className="font-medium text-gray-900 dark:text-white">{csvData?.length || 0} recipients</p>
+                                    <p className="text-gray-600 dark:text-gray-400">Emails:</p>
+                                    <p className="font-medium text-gray-900 dark:text-white">{totalRows || 0} recipients</p>
                                 </div>
                                 <div>
                                     <p className="text-gray-600 dark:text-gray-400">Subject:</p>
@@ -450,23 +486,23 @@ function Dashboard() {
                             </div>
                         </div>
 
-                        {/* Stats */}
+                        {/* Stats - COLOR CHANGE HERE */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                            <StatsCard icon={Users} label="Contacts" value={csvData?.length || 0} color="bg-blue-600" />
+                            <StatsCard icon={Users} label="Emails" value={totalRows || 0} color="bg-blue-600" />
                             <StatsCard icon={MessageSquare} label="Variables" value={selectedVariables.length} color="bg-indigo-600" />
-                            <StatsCard icon={Mail} label="Successful" value={successfulSends} color="bg-green-600" />
+                            <StatsCard icon={Mail} label="Successful" value={successfulSends} color="bg-green-600" /> {/* Changed to green */}
                             <StatsCard icon={X} label="Failed" value={failedSends} color="bg-red-600" />
                         </div>
 
-                        {/* Last Campaign Results */}
+                        {/* Last Campaign Results Summary - COLOR CHANGE HERE */}
                         {lastCampaignResult && (
-                            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-6 mb-6">
+                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-600/20 dark:to-emerald-600/20 border border-green-200 dark:border-green-800 rounded-xl p-6 mb-6">
                                 <h4 className="font-semibold text-purple-900 dark:text-purple-100 mb-4 flex items-center">
-                                    <CheckCircle className="mr-2" size={18} /> Last Campaign Results
+                                    <CheckCircle className="mr-2" size={18} /> Last Campaign Results Summary
                                 </h4>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                     <div className="text-center">
-                                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">{lastCampaignResult.successful}</div>
+                                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">{lastCampaignResult.successful}</div> {/* Green */}
                                         <div className="text-gray-600 dark:text-gray-400">Successful</div>
                                     </div>
                                     <div className="text-center">
@@ -474,16 +510,104 @@ function Dashboard() {
                                         <div className="text-gray-600 dark:text-gray-400">Failed</div>
                                     </div>
                                     <div className="text-center">
-                                        <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{lastCampaignResult.total}</div>
-                                        <div className="text-gray-600 dark:text-gray-400">Total</div>
+                                        <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{lastCampaignResult.total}</div> {/* Blue */}
+                                        <div className="text-gray-600 dark:text-gray-400">Total Sent</div> {/* Clarified label */}
                                     </div>
                                     <div className="text-center">
                                         <div className="text-xs text-gray-500 dark:text-gray-400">{lastCampaignResult.timestamp}</div>
                                         <div className="text-gray-600 dark:text-gray-400">Completed</div>
                                     </div>
                                 </div>
+                                <button
+                                    onClick={() => setShowDetailedResults(prev => !prev)}
+                                    className="mt-4 w-full flex items-center justify-center py-2 px-4 border border-purple-300 dark:border-purple-700 rounded-lg text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900 transition-colors"
+                                >
+                                    {showDetailedResults ? (
+                                        <>
+                                            <ChevronLeft className="mr-2" size={16} /> Hide Detailed Results
+                                        </>
+                                    ) : (
+                                        <>
+                                            Show Detailed Results <ChevronRight className="ml-2" size={16} />
+                                        </>
+                                    )}
+                                </button>
                             </div>
                         )}
+
+                        {/* NEW: Detailed Results Section with Filtering and Search */}
+                        {showDetailedResults && lastCampaignResult && (
+                            <div className="bg-white/70 backdrop-blur-sm border border-gray-200 dark:bg-[rgba(30,30,30,0.5)] dark:backdrop-blur-md dark:border-gray-800 rounded-2xl shadow-xl p-6">
+                                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                                    <Mail className="mr-2" size={20} /> All Campaign Emails
+                                </h3>
+
+                                {/* Filter and Search Controls */}
+                                <div className="flex flex-col sm:flex-row items-center gap-4 mb-4">
+                                    <div className="relative flex-grow w-full sm:w-auto">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                        <input
+                                            type="text"
+                                            placeholder="Search email address..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-2 border bg-white/70 backdrop-blur-sm border-gray-200 dark:bg-[rgba(30,30,30,0.5)] dark:backdrop-blur-md dark:border-gray-800 rounded-lg shadow-md text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                        />
+                                    </div>
+                                    <div className="flex space-x-2 w-full sm:w-auto justify-center">
+                                        <button
+                                            onClick={() => setFilterStatus('all')}
+                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filterStatus === 'all'
+                                                ? 'bg-blue-600 text-white shadow-md'
+                                                : 'bg-white/70 backdrop-blur-sm border border-gray-200 dark:bg-[rgba(30,30,30,0.5)] dark:backdrop-blur-md dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[rgba(40,40,40,0.5)]'
+                                                }`}
+                                        >
+                                            All ({successfulEmailsList.length + failedEmailsList.length})
+                                        </button>
+                                        <button
+                                            onClick={() => setFilterStatus('successful')}
+                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filterStatus === 'successful'
+                                                ? 'bg-green-600 text-white shadow-md'
+                                                : 'bg-white/70 backdrop-blur-sm border border-gray-200 dark:bg-[rgba(30,30,30,0.5)] dark:backdrop-blur-md dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[rgba(40,40,40,0.5)]'
+                                                }`}
+                                        >
+                                            Successful ({successfulEmailsList.length})
+                                        </button>
+                                        <button
+                                            onClick={() => setFilterStatus('failed')}
+                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filterStatus === 'failed'
+                                                ? 'bg-red-600 text-white shadow-md'
+                                                : 'bg-white/70 backdrop-blur-sm border border-gray-200 dark:bg-[rgba(30,30,30,0.5)] dark:backdrop-blur-md dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[rgba(40,40,40,0.5)]'
+                                                }`}
+                                        >
+                                            Failed ({failedEmailsList.length})
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Displayed Emails List */}
+                                <div className="max-h-80 overflow-y-auto text-sm bg-white/70 backdrop-blur-sm border border-gray-200 dark:bg-[rgba(30,30,30,0.5)] dark:backdrop-blur-md dark:border dark:border-gray-800 rounded-lg p-4 shadow-md custom-scrollbar">
+                                    {displayedEmails.length > 0 ? (
+                                        <ul className="space-y-1">
+                                            {displayedEmails.map((email, idx) => (
+                                                <li key={idx} className={`flex items-center ${filterStatus === 'successful' ? 'text-green-700 dark:text-green-300' : filterStatus === 'failed' ? 'text-red-700 dark:text-red-300' : 'text-gray-800 dark:text-gray-200'}`}>
+                                                    {filterStatus === 'all' && (
+                                                        <>
+                                                            {successfulEmailsList.includes(email) && <CheckCircle size={14} className="mr-2 text-green-500" />}
+                                                            {failedEmailsList.includes(email) && <X size={14} className="mr-2 text-red-500" />}
+                                                        </>
+                                                    )}
+                                                    {email}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <p className="text-center text-gray-500 dark:text-gray-400 py-4">No emails found matching the criteria.</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
 
                         {/* Send Button */}
                         <button
@@ -527,10 +651,10 @@ function Dashboard() {
                                 <button
                                     onClick={() => goToStep(step.id)}
                                     className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-300 ${currentStep === step.id
-                                            ? 'bg-blue-600 border-blue-600 text-white'
-                                            : currentStep > step.id
-                                                ? 'bg-green-600 border-green-600 text-white'
-                                                : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
+                                        ? 'bg-blue-600 border-blue-600 text-white'
+                                        : currentStep > step.id
+                                            ? 'bg-green-600 border-green-600 text-white'
+                                            : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
                                         }`}
                                 >
                                     {currentStep > step.id ? (
@@ -560,16 +684,16 @@ function Dashboard() {
                 {(status || error) && (
                     <div className="mb-6">
                         <div className={`rounded-xl p-4 transition-all duration-300 ${error ? 'bg-red-50/70 dark:bg-red-900/20 border border-red-200 dark:border-red-800' :
-                                (status.startsWith("✅") ? 'bg-green-50/70 dark:bg-green-900/20 border border-green-200 dark:border-green-800' :
-                                    'bg-blue-50/70 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800')
+                            (status.startsWith("✅") ? 'bg-green-50/70 dark:bg-green-900/20 border border-green-200 dark:border-green-800' :
+                                'bg-blue-50/70 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800')
                             }`}>
                             <div className="flex items-center">
                                 {error ? <AlertCircle className="text-red-600 dark:text-red-400 mr-2" size={20} /> :
                                     (status.startsWith("✅") ? <CheckCircle className="text-green-600 dark:text-green-400 mr-2" size={20} /> :
                                         <Info className="text-blue-600 dark:text-blue-400 mr-2" size={20} />)}
                                 <p className={`font-medium ${error ? 'text-red-800 dark:text-red-200' :
-                                        (status.startsWith("✅") ? 'text-green-800 dark:text-green-200' :
-                                            'text-blue-800 dark:text-blue-200')
+                                    (status.startsWith("✅") ? 'text-green-800 dark:text-green-200' :
+                                        'text-blue-800 dark:text-blue-200')
                                     }`}>
                                     {error || status}
                                 </p>

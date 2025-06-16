@@ -34,7 +34,7 @@ else: # For other OS (Linux/macOS), use XDG_DATA_HOME or a fallback in user home
     app_data_dir = os.getenv('XDG_DATA_HOME', os.path.join(os.path.expanduser('~'), '.local', 'share'))
 
 # Create an application-specific directory within AppData
-APP_NAME_DIR = "email-sender" # Use your application's name
+APP_NAME_DIR = "mailstorm" # Use your application's name
 APP_DATA_PATH = os.path.join(app_data_dir, APP_NAME_DIR)
 
 # Ensure the application data directory exists
@@ -333,21 +333,6 @@ async def send_emails_endpoint(
     html_content: bool = Form(False, description="True if the message is HTML, False for plain text"),
     bcc_mode: bool = Form(False, description="True to send emails as BCC, False for TO")
 ):
-    """
-    Send personalized emails to contacts from CSV file.
-    Expects:
-      - subject: email subject template
-      - message: string template with variables in {variable} format (can be HTML or plain text)
-      - csv_file: CSV file with contact data (must contain an 'email' column)
-      - variables: JSON string of variable names used in the template
-      - media_file: (optional) media file to attach to each email
-      - sender_email: Email address from which to send emails
-      - sender_password: Password for the sender's email (use app password for Gmail/Outlook)
-      - smtp_server: SMTP server address (e.g., smtp.gmail.com, smtp-mail.outlook.com)
-      - smtp_port: SMTP server port (default 587 for TLS, 465 for SSL)
-      - html_content: Boolean, true if the message is HTML, false for plain text
-      - bcc_mode: Boolean, true to send emails as BCC, false for TO
-    """
     try:
         variable_list = json.loads(variables)
     except json.JSONDecodeError:
@@ -397,38 +382,7 @@ async def send_emails_endpoint(
         # You would need to have an 'email_sender.py' file in the same directory
         # containing the 'send_emails_from_dataframe_enhanced' function.
         # For the purpose of this merge, this import is kept as is.
-        # from email_sender import send_emails_from_dataframe_enhanced
-
-        # Placeholder for send_emails_from_dataframe_enhanced if email_sender.py is not provided
-        # In a real application, you would implement the email sending logic here
-        # or ensure 'email_sender.py' is available.
-        # This placeholder will make the code runnable without actual email sending logic.
-        def send_emails_from_dataframe_enhanced(
-            df, subject_template, message_template, variables, media_path,
-            sender_email, sender_password, smtp_server, smtp_port, html_content, bcc_mode
-        ):
-            successful_sends = 0
-            failed_sends = 0
-            # Dummy email sending logic for demonstration
-            logging.info("Simulating email sending...")
-            for index, row in df.iterrows():
-                try:
-                    # Simulate personalized message creation
-                    final_subject = subject_template
-                    final_message = message_template
-                    for var in variables:
-                        if var in row:
-                            final_subject = final_subject.replace(f"{{{var}}}", str(row[var]))
-                            final_message = final_message.replace(f"{{{var}}}", str(row[var]))
-
-                    recipient_email = row['email']
-                    logging.info(f"Simulating sending email to {recipient_email} with subject: {final_subject}")
-                    successful_sends += 1
-                except Exception as e:
-                    logging.error(f"Simulated email send failed for {row.get('email', 'N/A')}: {e}")
-                    failed_sends += 1
-            return {"successful_sends": successful_sends, "failed_sends": failed_sends}
-
+        from email_sender import send_emails_from_dataframe_enhanced
 
         send_results = send_emails_from_dataframe_enhanced(
             df=df,
@@ -443,10 +397,12 @@ async def send_emails_endpoint(
             html_content=html_content,
             bcc_mode=bcc_mode
         )
-
+        print(f"Email campaign completed: {len(send_results['successful_emails'])} successful, {len(send_results['failed_emails'])} failed.")
         return JSONResponse({
             "status": "success",
-            "detail": f"Email campaign initiated. {send_results['successful_sends']} emails successfully sent, {send_results['failed_sends']} failed."
+            "detail": f"Email campaign initiated. {len(send_results['successful_emails'])} emails successfully sent, {len(send_results['failed_emails'])} failed.",
+            "successful_emails": send_results['successful_emails'],
+            "failed_emails": send_results['failed_emails']
         })
 
     except HTTPException:

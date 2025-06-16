@@ -1,18 +1,29 @@
 import uvicorn
-import main as fastapi_app # Assuming your FastAPI instance is in main.py and named 'app'
+import main as fastapi_app
 import os
 import sys
+import logging # Import logging to integrate with FastAPI's logging setup
 
-# Define a default port or get from environment variable
-# This port must be known by your frontend and chosen carefully
+# Configure logging for uvicorn, ensuring it respects the main app's logging settings
+log_config = uvicorn.config.LOGGING_CONFIG
+log_config["formatters"]["default"]["fmt"] = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+log_config["formatters"]["access"]["fmt"] = '%(asctime)s - %(levelname)s - %(name)s - %(message)s'
+
+# Define a default port and host
 PORT = int(os.environ.get("FASTAPI_PORT", 8000))
-HOST = os.environ.get("FASTAPI_HOST", "127.0.0.1") # Use 127.0.0.1 for local desktop app communication
+HOST = os.environ.get("FASTAPI_HOST", "127.0.0.1")
 
-# Print statement for startup message. This will now go through the logger in whatsapp_sender if configured first,
-# or use default system encoding.
-print(f"Starting FastAPI server on http://{HOST}:{PORT}") 
+# Use logging instead of print for better integration and handling in a packaged app
+logging.info(f"Starting FastAPI server on http://{HOST}:{PORT}")
+
 try:
-    uvicorn.run(fastapi_app.app, host=HOST, port=PORT, log_level="info")
+    uvicorn.run(
+        fastapi_app.app,
+        host=HOST,
+        port=PORT,
+        log_level="info", # This will ensure INFO level messages from uvicorn are shown
+        log_config=log_config # Apply the custom log format
+    )
 except Exception as e:
-    print(f"Error starting FastAPI: {e}") # This print statement might still use default encoding
+    logging.critical(f"CRITICAL ERROR: Failed to start FastAPI server: {e}", exc_info=True)
     sys.exit(1)

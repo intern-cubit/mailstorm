@@ -26,7 +26,7 @@ const CSVPreview = ({ data, columns, onClose, totalRows }) => {
     const remainingColumns = columns.length - displayColumns.length;
 
     const currentRowsDisplayed = Math.min(rowsToShow, data.length);
-    const remainingContacts = totalRows - currentRowsDisplayed;
+    const remainingEmails = totalRows - currentRowsDisplayed;
 
     return (
         <div className="w-full bg-white/70 backdrop-blur-sm border border-gray-200 dark:bg-[rgba(30,30,30,0.5)] dark:backdrop-blur-md dark:border-gray-800 rounded-xl shadow-sm overflow-hidden">
@@ -39,7 +39,7 @@ const CSVPreview = ({ data, columns, onClose, totalRows }) => {
                             Contact Preview
                         </h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                            First {currentRowsDisplayed} rows • {totalRows} total contacts
+                            First {currentRowsDisplayed} rows • {totalRows} total Emails
                         </p>
                     </div>
                 </div>
@@ -59,7 +59,7 @@ const CSVPreview = ({ data, columns, onClose, totalRows }) => {
                         <div className="flex items-center text-gray-600 dark:text-gray-400">
                             <Users className="mr-2" size={16} />
                             <span className="font-semibold text-gray-900 dark:text-white">{totalRows}</span>
-                            <span className="ml-1">contacts</span>
+                            <span className="ml-1">Emails</span>
                         </div>
                         <div className="flex items-center text-gray-600 dark:text-gray-400">
                             <FileText className="mr-2" size={16} />
@@ -138,9 +138,9 @@ const CSVPreview = ({ data, columns, onClose, totalRows }) => {
                         <span>•</span>
                         <span>Displaying {displayColumns.length} of {columns.length} columns</span>
                     </div>
-                    {remainingContacts > 0 && (
+                    {remainingEmails > 0 && (
                         <span className="text-blue-600 dark:text-blue-400 font-medium">
-                            {remainingContacts} more contacts available
+                            {remainingEmails} more Emails available
                         </span>
                     )}
                 </div>
