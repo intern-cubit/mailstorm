@@ -17,8 +17,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 app = FastAPI()
 
 # Add CORS middleware to allow cross-origin requests from your frontend
-# Using "*" for origins during development for flexibility.
-# In a production environment, you should restrict this to your frontend's specific URLs.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], # Allows all origins, including http://localhost:5173 (for email app) and http://localhost:3000 (for activation app)
@@ -27,9 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- MODIFICATION START ---
 # Determine the user-specific application data directory
-# On Windows, this will typically resolve to C:\Users\YourUser\AppData\Local
 if os.name == 'nt': # Check if the operating system is Windows
     app_data_dir = os.getenv('LOCALAPPDATA')
     if app_data_dir is None: # Fallback in case LOCALAPPDATA env var is not set (unlikely on modern Windows)
@@ -42,11 +38,17 @@ APP_NAME_DIR = "email-sender" # Use your application's name
 APP_DATA_PATH = os.path.join(app_data_dir, APP_NAME_DIR)
 
 # Ensure the application data directory exists
-os.makedirs(APP_DATA_PATH, exist_ok=True)
+# This should be done at application startup or before any file operations.
+try:
+    os.makedirs(APP_DATA_PATH, exist_ok=True)
+    logging.info(f"Ensured application data directory exists: {APP_DATA_PATH}")
+except OSError as e:
+    logging.critical(f"CRITICAL ERROR: Could not create application data directory {APP_DATA_PATH}: {e}")
+    # If this fails, the application might not be able to save activation data.
+    # Consider raising an exception or having a global error handler for startup issues.
 
 # Define the full path to the activation file
 ACTIVATION_FILE = os.path.join(APP_DATA_PATH, "activation.txt")
-# --- MODIFICATION END ---
 
 
 class ActivationRequest(BaseModel):
@@ -56,34 +58,60 @@ class ActivationRequest(BaseModel):
 
 def get_motherboard_serial():
     try:
-        result = subprocess.check_output("wmic baseboard get serialnumber", shell=True)
-        serial = result.decode().split('\n')[1].strip()
+        # Using powershell for potentially more robust WMI queries on modern Windows
+        # Fallback to wmic if powershell fails or is not preferred
+        try:
+            result = subprocess.check_output(
+                ["powershell.exe", "-Command", "(Get-WmiObject Win32_BaseBoard).SerialNumber"],
+                text=True, # Decode to string directly
+                stderr=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NO_WINDOW # Hide the console window on Windows
+            )
+            serial = result.strip()
+            if serial:
+                return serial
+            else:
+                logging.warning("Powershell returned empty motherboard serial. Falling back to wmic.")
+        except (subprocess.CalledProcessError, FileNotFoundError, Exception) as e:
+            logging.warning(f"Powershell WMI query for motherboard serial failed ({e}). Falling back to wmic.")
+
+        # WMIC fallback
+        result = subprocess.check_output("wmic baseboard get serialnumber", shell=True, text=True)
+        serial = result.split('\n')[1].strip()
         return serial
     except Exception as e:
+        logging.error(f"Failed to get motherboard serial: {e}")
         return f"Error getting motherboard serial: {e}"
 
 def get_processor_id():
     try:
-        result = subprocess.check_output("wmic cpu get processorId", shell=True)
-        processor_id = result.decode().split('\n')[1].strip()
+        # Using powershell for potentially more robust WMI queries on modern Windows
+        try:
+            result = subprocess.check_output(
+                ["powershell.exe", "-Command", "(Get-WmiObject Win32_Processor).ProcessorId"],
+                text=True,
+                stderr=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+            processor_id = result.strip()
+            if processor_id:
+                return processor_id
+            else:
+                logging.warning("Powershell returned empty processor ID. Falling back to wmic.")
+        except (subprocess.CalledProcessError, FileNotFoundError, Exception) as e:
+            logging.warning(f"Powershell WMI query for processor ID failed ({e}). Falling back to wmic.")
+
+        # WMIC fallback
+        result = subprocess.check_output("wmic cpu get processorId", shell=True, text=True)
+        processor_id = result.split('\n')[1].strip()
         return processor_id
     except Exception as e:
+        logging.error(f"Failed to get processor ID: {e}")
         return f"Error getting processor ID: {e}"
 
 def generate_activation_key(processorId: str, motherboardSerial: str) -> str:
     """
     Generates an activation key similar to the provided JavaScript function.
-    The 'processorId' parameter is present for consistency with the JavaScript
-    function's signature, but in the context of your Python system info
-    retrieval (which gets motherboard serial and processor ID), you might
-    adapt which hardware IDs are used as input.
-    
-    For the purpose of matching the JavaScript, I am assuming the 'processorId'
-    in the JavaScript function corresponds to your 'processorId' or another
-    unique hardware identifier you might be using on the client side,
-    and 'motherboardSerial' is consistent.
-
-    Given the context, I will use processorId as processorId's substitute.
     """
     input_string = f"{processorId}:{motherboardSerial}".upper()
 
@@ -95,8 +123,7 @@ def generate_activation_key(processorId: str, motherboardSerial: str) -> str:
     # Convert hex to BigInt (Python int) and then to Base36
     big_int_value = int(hex_hash, 16)
     
-    # Custom Base36 conversion since Python's int.to_string(36) doesn't exist directly
-    # and divmod approach is needed.
+    # Custom Base36 conversion
     base36_chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     base36_result = ""
     while big_int_value > 0:
@@ -109,7 +136,7 @@ def generate_activation_key(processorId: str, motherboardSerial: str) -> str:
     base36 = base36_result.upper()
 
     # Pad and slice to 16 characters
-    raw_key = base36.zfill(16)[:16] # zfill pads with zeros, then slice
+    raw_key = base36.zfill(16)[:16]
 
     # Format with hyphens
     formatted_key = "-".join([raw_key[i:i+4] for i in range(0, len(raw_key), 4)])
@@ -120,11 +147,21 @@ def generate_activation_key(processorId: str, motherboardSerial: str) -> str:
 async def get_system_info_endpoint():
     """
     Retrieves the motherboard serial number and processor ID of the system.
-    Note: This uses Windows-specific `wmic` commands and will return errors on other OS.
+    Note: This uses Windows-specific `wmic` or `powershell` commands.
     """
     motherboard_serial = get_motherboard_serial()
     processor_id = get_processor_id()
+    
+    # Check if system info retrieval had an error before returning
+    if "Error" in motherboard_serial or "Error" in processor_id:
+        # If there's an error, raise an HTTP 500 so the frontend knows something went wrong.
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve complete system information. Motherboard: {motherboard_serial}, Processor: {processor_id}"
+        )
+    
     return {"motherboardSerial": motherboard_serial, "processorId": processor_id}
+
 
 @app.post("/activate")
 async def activate_system_endpoint(request: ActivationRequest):
@@ -133,26 +170,29 @@ async def activate_system_endpoint(request: ActivationRequest):
     with the activation key provided by the user. If they match, the generated key
     is saved to a local file.
     """
-    logging.info(f"Activation request received for Motherboard: {request.motherboardSerial}, Processor: {request.processorId}")
+    logging.info(f"Activation request received for Motherboard: '{request.motherboardSerial}', Processor: '{request.processorId}'")
 
     # Generate the activation key using the system's hardware IDs
-    # Assuming processorId is the equivalent of 'processorId' used in the JS function for key generation
     generated_key = generate_activation_key(request.processorId, request.motherboardSerial)
     logging.info(f"Generated Activation Key: {generated_key}")
 
     # Compare the generated key directly with the provided activation key
-    if generated_key == request.activationKey.upper(): # Ensure case-insensitive comparison if the provided key might vary in case
+    if generated_key == request.activationKey.upper(): # Ensure case-insensitive comparison
         try:
-            # If keys match, save the generated key to the activation file
-            # You might want to save a hash of the generated key for security,
-            # but for direct comparison, saving the key itself is fine as per original intent.
+            # Ensure the directory exists before writing the file
+            os.makedirs(os.path.dirname(ACTIVATION_FILE), exist_ok=True)
             with open(ACTIVATION_FILE, "w") as f:
                 f.write(generated_key)
             logging.info(f"Activation successful. Key saved to {ACTIVATION_FILE}")
             return {"success": True, "message": "Activation successful!"}
+        except IOError as e:
+            # Specific error for file writing issues
+            logging.error(f"IOError saving activation file {ACTIVATION_FILE}: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to save activation data due to file system error: {e}")
         except Exception as e:
-            logging.error(f"Error saving activation file: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to save activation data: {e}")
+            # General catch-all for other unexpected errors during file saving
+            logging.error(f"Unexpected error saving activation file {ACTIVATION_FILE}: {e}")
+            raise HTTPException(status_code=500, detail=f"An unexpected error occurred while saving activation data: {e}")
     else:
         logging.warning(f"Activation failed: Provided key '{request.activationKey}' does not match generated key '{generated_key}'.")
         return {"success": False, "message": "Activation failed: Invalid key."}
@@ -169,11 +209,15 @@ async def check_activation_endpoint():
 
     # If system info cannot be retrieved, treat as not activated and clean up any old file
     if "Error" in motherboard_serial or "Error" in processor_id:
-        logging.error("Could not retrieve system info for activation check.")
+        error_message = f"Failed to retrieve system information for activation check. Motherboard: {motherboard_serial}, Processor: {processor_id}"
+        logging.error(error_message)
         if os.path.exists(ACTIVATION_FILE):
-            os.remove(ACTIVATION_FILE)
-            logging.info(f"Deleted invalid {ACTIVATION_FILE} due to system info retrieval error.")
-        return {"isActivated": False, "message": "Failed to retrieve system information for activation check."}
+            try:
+                os.remove(ACTIVATION_FILE)
+                logging.info(f"Deleted invalid {ACTIVATION_FILE} due to system info retrieval error.")
+            except OSError as e:
+                logging.error(f"Error deleting activation file {ACTIVATION_FILE} during cleanup: {e}")
+        return {"isActivated": False, "message": error_message}
 
     generated_key = generate_activation_key(processor_id, motherboard_serial)
     logging.info(f"Check Activation: Generated Key: {generated_key}")
@@ -182,27 +226,43 @@ async def check_activation_endpoint():
     stored_key = None
     try:
         if os.path.exists(ACTIVATION_FILE):
-            with open(ACTIVATION_FILE, "r") as f:
-                stored_key = f.read().strip()
-            logging.info(f"Check Activation: Stored Key: {stored_key}")
+            try:
+                with open(ACTIVATION_FILE, "r") as f:
+                    stored_key = f.read().strip()
+                logging.info(f"Check Activation: Stored Key: {stored_key}")
 
-            if generated_key == stored_key:
-                is_activated = True
-                logging.info("Check Activation: System is activated.")
-            else:
-                logging.warning("Check Activation: Generated key does not match stored key. Deleting activation file.")
+                if generated_key == stored_key:
+                    is_activated = True
+                    logging.info("Check Activation: System is activated.")
+                else:
+                    logging.warning("Check Activation: Generated key does not match stored key. Deleting activation file.")
+                    try:
+                        os.remove(ACTIVATION_FILE)
+                        logging.info(f"Deleted invalid {ACTIVATION_FILE}.")
+                    except OSError as e:
+                        logging.error(f"Error deleting activation file {ACTIVATION_FILE} during mismatch: {e}")
+            except IOError as e:
+                logging.error(f"IOError reading activation file {ACTIVATION_FILE}: {e}")
+                # If cannot read, assume not activated and clean up to prevent future issues
                 if os.path.exists(ACTIVATION_FILE):
-                    os.remove(ACTIVATION_FILE)
-                    logging.info(f"Deleted invalid {ACTIVATION_FILE}.")
+                    try:
+                        os.remove(ACTIVATION_FILE)
+                        logging.info(f"Deleted unreadable {ACTIVATION_FILE}.")
+                    except OSError as e_del:
+                        logging.error(f"Error deleting unreadable activation file {ACTIVATION_FILE}: {e_del}")
+                is_activated = False
         else:
             logging.info("Check Activation: Activation file not found.")
 
     except Exception as e:
-        logging.error(f"Error during activation check: {e}")
+        logging.error(f"Unhandled error during activation check: {e}", exc_info=True) # exc_info=True for full traceback
         # If any error occurs during file reading/comparison, assume not activated and clean up
         if os.path.exists(ACTIVATION_FILE):
-            os.remove(ACTIVATION_FILE)
-            logging.info(f"Deleted invalid {ACTIVATION_FILE} due to error during check.")
+            try:
+                os.remove(ACTIVATION_FILE)
+                logging.info(f"Deleted invalid {ACTIVATION_FILE} due to error during check.")
+            except OSError as e_del:
+                logging.error(f"Error deleting activation file {ACTIVATION_FILE} during general error cleanup: {e_del}")
         is_activated = False
     
     return {"isActivated": is_activated, "message": "System is activated." if is_activated else "System is not activated."}
@@ -249,14 +309,14 @@ async def preview_csv_endpoint(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"DEBUG: Unexpected error in /preview-csv: {e}")
+        logging.error(f"Unexpected error in /preview-csv: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
     finally:
         if temp_dir and os.path.exists(temp_dir):
             try:
                 shutil.rmtree(temp_dir, ignore_errors=True)
             except OSError as e:
-                print(f"DEBUG: Error cleaning up temp directory {temp_dir}: {e}")
+                logging.error(f"Error cleaning up temp directory {temp_dir}: {e}")
 
 
 @app.post("/send-emails") # Renamed endpoint for clarity
@@ -392,14 +452,14 @@ async def send_emails_endpoint(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"DEBUG: Unexpected error in /send-emails: {e}")
+        logging.error(f"Unexpected error in /send-emails: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Unexpected server error: {e}")
     finally:
         if temp_dir and os.path.exists(temp_dir):
             try:
                 shutil.rmtree(temp_dir, ignore_errors=True)
             except OSError as e:
-                print(f"DEBUG: Error cleaning up temp directory {temp_dir}: {e}")
+                logging.error(f"Error cleaning up temp directory {temp_dir}: {e}")
 
 @app.get("/health")
 async def health_check():

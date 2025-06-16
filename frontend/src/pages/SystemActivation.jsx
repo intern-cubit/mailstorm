@@ -68,16 +68,26 @@ const SystemActivation = ({ onActivationSuccess }) => {
                 }),
             });
 
+            // Always try to parse JSON, even if response is not ok, as FastAPI sends JSON error details
             const data = await response.json();
-            setMessage(data.message); 
-            setIsActivated(data.success); 
 
-            if (data.success && onActivationSuccess) {
-                onActivationSuccess();
+            if (response.ok) {
+                setMessage(data.message);
+                setIsActivated(data.success);
+
+                if (data.success && onActivationSuccess) {
+                    onActivationSuccess();
+                }
+            } else {
+                // Server returned a non-2xx status code
+                const errorMessage = data.detail || data.message || `HTTP error! status: ${response.status}`;
+                setMessage(`Activation failed: ${errorMessage}`);
+                setIsActivated(false);
+                console.error('Activation failed response:', data); // Log the full error data from backend
             }
         } catch (error) {
-            console.error('Error during activation:', error);
-            setMessage('Failed to activate. Please check your connection and try again.');
+            console.error('Network error during activation:', error); // Network errors (e.g., server not running)
+            setMessage('Failed to activate. Please check your network connection and ensure the backend is running.');
             setIsActivated(false);
         }
     };
