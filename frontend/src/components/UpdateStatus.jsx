@@ -1,7 +1,7 @@
 // This assumes you are using `electronAPI` exposed via preload.js
 import React, { useState, useEffect } from 'react';
 
-const UpdateStatusComponent = () => {
+const UpdateStatus = () => {
     const [updateStatus, setUpdateStatus] = useState('Checking for updates...');
     const [updateAvailable, setUpdateAvailable] = useState(false);
     const [updateDownloaded, setUpdateDownloaded] = useState(false);
@@ -84,4 +84,4 @@ const UpdateStatusComponent = () => {
     );
 };
 
-export default UpdateStatusComponent;
+export default UpdateStatus;
