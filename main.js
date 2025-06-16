@@ -5,6 +5,37 @@ const fs = require("fs");
 const http = require("http");
 const { autoUpdater } = require("electron-updater");
 const log = require("electron-log");
+const { exec } = require('child_process');
+
+// --- Function to kill a process on a specific port (Windows-specific) ---
+// This function now returns a Promise, allowing us to await its completion.
+function killPort(port) {
+    return new Promise((resolve, reject) => {
+        console.log(`[KILLPORT] Attempting to kill process on port ${port}...`);
+        // The command uses backticks for template literals to correctly embed the port variable
+        const command = `for /f "tokens=5" %a in ('netstat -aon ^| find ":${port}" ^| find "LISTENING"') do taskkill /F /PID %a`;
+
+        exec(command, (err, stdout, stderr) => {
+            if (err) {
+                // If the error indicates "No process found" or similar, it's not a true failure for our purpose
+                if (stderr.includes("No process found") || stderr.includes("not found")) {
+                    console.log(`[KILLPORT] No process found on port ${port}, proceeding.`);
+                    resolve(); // Resolve, as the port is clear
+                } else {
+                    console.error(`[KILLPORT] Error killing port ${port}: ${stderr}`);
+                    // You might choose to reject here if a true error occurred,
+                    // but for startup, often just logging is sufficient if the port is cleared.
+                    // For now, we'll resolve even on error so the app can attempt to start.
+                    // If you want a hard stop on *any* killPort error, change resolve() to reject(err) here.
+                    resolve();
+                }
+            } else {
+                console.log(`[KILLPORT] Port ${port} cleared: ${stdout}`);
+                resolve();
+            }
+        });
+    });
+}
 
 // --- Global Variables ---
 let backendProcess;
@@ -226,36 +257,87 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
 }
 
+
 // --- Electron App Lifecycle Events ---
-app.on("ready", () => {
-    startBackend();
 
-    pollBackendReady(() => {
-        createWindow();
-        setTimeout(() => {
-            autoUpdater.checkForUpdatesAndNotify();
-        }, 5000);
+// Implement Single Instance Lock
+// This must be called early in the main process
+const gotTheLock = app.requestSingleInstanceLock();
+console.log(`[APP LIFECYCLE] Single instance lock attempt: ${gotTheLock ? "Acquired" : "Failed (another instance detected)"}`);
+
+if (!gotTheLock) {
+    // If another instance is running, quit this one immediately
+    console.log("[APP LIFECYCLE] Another instance of the application is already running. Quitting this instance.");
+    app.quit();
+} else {
+    // If this is the primary instance, set up second-instance handling
+    app.on('second-instance', (event, commandLine, workingDirectory) => {
+        console.log("[APP LIFECYCLE] Second instance attempted to launch. Focusing existing window.");
+        // Someone tried to run a second instance, focus our main window
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.focus();
+        }
     });
 
-    app.on("activate", function () {
-        if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    // Proceed with the main app initialization for the primary instance
+    app.on("ready", async () => { // Make app.on("ready") async to use await
+        console.log("[APP LIFECYCLE] Electron app 'ready' event fired.");
+
+        try {
+            // Wait for killPort to complete before attempting to start the backend
+            await killPort(BACKEND_PORT);
+            console.log("[APP LIFECYCLE] killPort operation completed.");
+        } catch (error) {
+            // This catch block will only hit if killPort explicitly rejects its Promise
+            console.error(`[APP LIFECYCLE] Critical error during killPort operation: ${error.message}. Quitting application.`);
+            dialog.showErrorBox("Port Cleaning Error", `Could not ensure port ${BACKEND_PORT} is free: ${error.message}. Application will quit.`);
+            app.quit();
+            return; // Ensure no further execution if we quit
+        }
+
+        startBackend();
+
+        pollBackendReady(() => {
+            createWindow();
+            setTimeout(() => {
+                autoUpdater.checkForUpdatesAndNotify();
+            }, 5000);
+        });
+
+        app.on("activate", function () {
+            // On macOS, usually re-create a window when the dock icon is clicked and no other windows are open.
+            // With single instance lock, this will only run if this is the primary instance.
+            if (BrowserWindow.getAllWindows().length === 0) {
+                console.log("[APP LIFECYCLE] Activate event: No windows open, creating one.");
+                createWindow();
+            } else {
+                console.log("[APP LIFECYCLE] Activate event: Windows already open, focusing.");
+                // This might be redundant with second-instance, but good for clarity
+                if (mainWindow) {
+                    if (mainWindow.isMinimized()) mainWindow.restore();
+                    mainWindow.focus();
+                }
+            }
+        });
     });
-});
+}
+
 
 app.on("window-all-closed", () => {
+    // Quit the app when all windows are closed, except on macOS
+    // where apps typically stay active in the menu bar until explicitly quit.
+    console.log("[APP LIFECYCLE] All windows closed.");
     if (process.platform !== "darwin") {
         app.quit();
     }
 });
 
-app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") {
-        app.quit();
-    }
-});
 
 app.on("will-quit", async (event) => {
+    // Prevent default behavior to allow custom shutdown logic
     event.preventDefault();
+    console.log("[APP LIFECYCLE] 'will-quit' event fired. Initiating backend termination sequence.");
 
     if (backendProcess) {
         console.log("Terminating backend process...");
@@ -265,6 +347,7 @@ app.on("will-quit", async (event) => {
         const cleanupAndExit = () => {
             clearTimeout(killTimeout);
             backendProcess = null; // Clear the backend process reference
+            console.log("[APP LIFECYCLE] Backend process reference cleared. Allowing Electron to exit.");
             app.exit(); // Allow Electron to quit
         };
 
@@ -307,7 +390,6 @@ app.on("will-quit", async (event) => {
         try {
             console.log("Sending shutdown request to backend API endpoint...");
             // Dynamically import node-fetch here, inside the async function
-            // This is the fix for ERR_REQUIRE_ESM
             const { default: fetch } = await import("node-fetch");
 
             const response = await fetch(BACKEND_SHUTDOWN_URL, {
