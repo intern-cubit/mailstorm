@@ -6,10 +6,9 @@ const UpdateStatus = () => {
     const [updateDownloaded, setUpdateDownloaded] = useState(false);
     const [downloadProgress, setDownloadProgress] = useState(0);
     const [newVersion, setNewVersion] = useState('');
-    const [downloadStarted, setDownloadStarted] = useState(false); // New state to track download initiation
+    const [downloadStarted, setDownloadStarted] = useState(false);
 
     useEffect(() => {
-        // Ensure electronAPI is available (only in Electron environment)
         if (window.electronAPI) {
             window.electronAPI.onUpdateStatus((message) => {
                 setUpdateStatus(message);
@@ -18,7 +17,6 @@ const UpdateStatus = () => {
             window.electronAPI.onUpdateAvailable((version) => {
                 setUpdateAvailable(true);
                 setNewVersion(version);
-                // Status updated to prompt user to click download button
                 setUpdateStatus(`Update v${version} available. Click 'Download & Install' to begin.`);
             });
 
@@ -29,19 +27,21 @@ const UpdateStatus = () => {
 
             window.electronAPI.onUpdateDownloaded(() => {
                 setUpdateDownloaded(true);
-                setDownloadStarted(false); // Reset downloadStarted as download is complete
+                setDownloadStarted(false);
                 setUpdateStatus('Update downloaded. Ready to install.');
             });
         } else {
+            // Only set this status if not in Electron, otherwise it should remain 'Checking for updates...'
+            // and hide the component until a specific update status is received.
             setUpdateStatus('Not running in Electron environment (updates disabled).');
         }
     }, []);
 
     const handleDownloadUpdate = () => {
         if (window.electronAPI && updateAvailable) {
-            setDownloadStarted(true); // Indicate that download has been initiated
+            setDownloadStarted(true);
             setUpdateStatus(`Starting download for v${newVersion}...`);
-            window.electronAPI.downloadUpdate(); // Trigger the download
+            window.electronAPI.downloadUpdate();
         }
     };
 
@@ -50,6 +50,14 @@ const UpdateStatus = () => {
             window.electronAPI.restartApp();
         }
     };
+
+    // Render the component only if an update is available, downloaded, download has started,
+    // or if it's explicitly stating it's not in an Electron environment (for development feedback).
+    const shouldShowUpdateStatus = updateAvailable || updateDownloaded || downloadStarted || updateStatus.includes('Not running in Electron environment');
+
+    if (!shouldShowUpdateStatus) {
+        return null; // Don't render anything if no update is found and not actively processing
+    }
 
     return (
         <div style={{ padding: '20px', border: '1px solid #ccc', margin: '20px', borderRadius: '8px' }}>
@@ -97,7 +105,7 @@ const UpdateStatus = () => {
                     style={{
                         marginTop: '10px',
                         padding: '10px 15px',
-                        backgroundColor: '#28a745', // Green color for restart button
+                        backgroundColor: '#28a745',
                         color: 'white',
                         border: 'none',
                         borderRadius: '5px',
