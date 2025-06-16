@@ -27,7 +27,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-ACTIVATION_FILE = "activation.txt"
+# --- MODIFICATION START ---
+# Determine the user-specific application data directory
+# On Windows, this will typically resolve to C:\Users\YourUser\AppData\Local
+if os.name == 'nt': # Check if the operating system is Windows
+    app_data_dir = os.getenv('LOCALAPPDATA')
+    if app_data_dir is None: # Fallback in case LOCALAPPDATA env var is not set (unlikely on modern Windows)
+        app_data_dir = os.path.join(os.path.expanduser('~'), 'AppData', 'Local')
+else: # For other OS (Linux/macOS), use XDG_DATA_HOME or a fallback in user home
+    app_data_dir = os.getenv('XDG_DATA_HOME', os.path.join(os.path.expanduser('~'), '.local', 'share'))
+
+# Create an application-specific directory within AppData
+APP_NAME_DIR = "email-sender" # Use your application's name
+APP_DATA_PATH = os.path.join(app_data_dir, APP_NAME_DIR)
+
+# Ensure the application data directory exists
+os.makedirs(APP_DATA_PATH, exist_ok=True)
+
+# Define the full path to the activation file
+ACTIVATION_FILE = os.path.join(APP_DATA_PATH, "activation.txt")
+# --- MODIFICATION END ---
+
 
 class ActivationRequest(BaseModel):
     motherboardSerial: str
