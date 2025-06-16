@@ -9,10 +9,10 @@ const Header = () => {
         <header className="flex justify-between items-center py-4 px-6 bg-white/70 backdrop-blur-sm border border-gray-200 dark:bg-[rgba(30,30,30,0.5)] dark:backdrop-blur-md dark:border dark:border-gray-800 shadow-sm rounded-xl mb-8">
             <div className="flex items-center">
                 <h1 className="text-3xl font-extrabold text-blue-700 dark:text-blue-400 mr-2">
-                    Campaign
+                    Wa
                 </h1>
                 <span className="text-3xl font-extrabold text-gray-900 dark:text-white">
-                    Flow
+                    Bomb
                 </span>
                 <p className="hidden md:block ml-4 text-gray-600 dark:text-gray-400 text-sm">
                     Seamlessly manage your Email campaigns.
