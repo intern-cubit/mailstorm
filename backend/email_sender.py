@@ -42,7 +42,7 @@ except Exception:
 
 logger.addHandler(console_handler)
 
-def safe_print(message):
+def print(message):
     logger.info(message)
 # -----------------------------------------------------------------------------------
 
@@ -106,9 +106,9 @@ def send_single_email(
                 f"attachment; filename= {filename}",
             )
             msg.attach(part)
-            safe_print(f"📎 Attached file: {filename}")
+            print(f"Attached file: {filename}")
         except Exception as e:
-            safe_print(f"❌ Error attaching file {attachment_path}: {e}")
+            print(f"Error attaching file {attachment_path}: {e}")
 
     try:
         with smtplib.SMTP(smtp_server, smtp_port) as server:
@@ -117,17 +117,17 @@ def send_single_email(
             server.send_message(msg)
             
         send_type = "BCC" if bcc_mode else "TO"
-        safe_print(f"✅ Email sent ({send_type}) to {receiver_email} with subject: '{subject}'")
+        print(f"Email sent ({send_type}) to {receiver_email} with subject: '{subject}'")
         return True
     except smtplib.SMTPAuthenticationError:
-        safe_print(f"❌ Authentication failed for {sender_email}. Check password/app password and SMTP settings. For Gmail/Outlook, use an App Password.")
+        print(f"Authentication failed for {sender_email}. Check password/app password and SMTP settings. For Gmail/Outlook, use an App Password.")
         return False
     except smtplib.SMTPConnectError as e:
-        safe_print(f"❌ Could not connect to SMTP server {smtp_server}:{smtp_port}. Error: {e}")
-        safe_print("Please check your SMTP server address and port, and ensure your network allows outgoing connections on this port.")
+        print(f"Could not connect to SMTP server {smtp_server}:{smtp_port}. Error: {e}")
+        print("Please check your SMTP server address and port, and ensure your network allows outgoing connections on this port.")
         return False
     except Exception as e:
-        safe_print(f"❌ Error sending email to {receiver_email}: {e}")
+        print(f"Error sending email to {receiver_email}: {e}")
         return False
 
 def send_emails_from_dataframe_enhanced(
@@ -150,18 +150,18 @@ def send_emails_from_dataframe_enhanced(
     successful_emails: List[str] = []
     failed_emails: List[str] = []
 
-    safe_print(f"📧 Starting email campaign from {sender_email} (HTML: {html_content}, BCC: {bcc_mode})...")
+    print(f"Starting email campaign from {sender_email} (HTML: {html_content}, BCC: {bcc_mode})...")
 
     for index, row in df.iterrows():
         receiver_email = str(row.get("email", "")).strip()
 
         if not receiver_email:
-            safe_print(f"⚠️ Skipping row {index+1}: 'email' column is empty or missing.")
+            print(f"Skipping row {index+1}: 'email' column is empty or missing.")
             failed_emails.append(f"Row {index+1} (no email address found)")
             continue
 
         if "@" not in receiver_email or "." not in receiver_email.split("@")[-1]:
-            safe_print(f"⚠️ Skipping invalid email address: '{receiver_email}' (row {index+1})")
+            print(f"Skipping invalid email address: '{receiver_email}' (row {index+1})")
             failed_emails.append(f"{receiver_email} (invalid format)")
             continue
 
@@ -170,7 +170,7 @@ def send_emails_from_dataframe_enhanced(
         personalized_subject = replace_variables_in_message(subject_template, row_dict, variables)
         personalized_message = replace_variables_in_message(message_template, row_dict, variables)
 
-        safe_print(f"Sending email to {receiver_email}...")
+        print(f"Sending email to {receiver_email}...")
 
         success = send_single_email(
             sender_email=sender_email,
@@ -192,9 +192,9 @@ def send_emails_from_dataframe_enhanced(
 
         # Apply delay between emails
         sleep_time = random.randint(*DELAY_BETWEEN_EMAILS)
-        safe_print(f"⏱️ Sleeping {sleep_time}s before next email...\n")
+        print(f"Sleeping {sleep_time}s before next email...\n")
         time.sleep(sleep_time)
 
-    safe_print("🎉 Email campaign finished!")
-    safe_print(f"Summary: {len(successful_emails)} emails sent successfully, {len(failed_emails)} failed.")
+    print("Email campaign finished!")
+    print(f"Summary: {len(successful_emails)} emails sent successfully, {len(failed_emails)} failed.")
     return {"successful_emails": successful_emails, "failed_emails": failed_emails}
