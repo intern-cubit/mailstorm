@@ -11,12 +11,12 @@ let backendProcess;
 let mainWindow;
 const BACKEND_PORT = 8000;
 const BACKEND_HEALTH_URL = `http://localhost:${BACKEND_PORT}/health`;
+const BACKEND_SHUTDOWN_URL = `http://localhost:${BACKEND_PORT}/shutdown`;
 
 // --- Auto-Updater Configuration & Logic ---
 log.transports.file.level = "info";
 autoUpdater.logger = log;
-// --- IMPORTANT CHANGE: Disable automatic download
-autoUpdater.autoDownload = false;
+autoUpdater.autoDownload = true;
 
 autoUpdater.on("checking-for-update", () => {
     log.info("Checking for update...");
@@ -30,7 +30,7 @@ autoUpdater.on("update-available", (info) => {
     if (mainWindow) {
         mainWindow.webContents.send(
             "update-status",
-            `Update available: v${info.version}. Click 'Download & Install' to proceed.` // Updated status message
+            `Update available: v${info.version}`
         );
         mainWindow.webContents.send("update-available", info.version);
     }
@@ -82,13 +82,7 @@ ipcMain.on("restart_app", () => {
     autoUpdater.quitAndInstall();
 });
 
-// --- NEW: IPC handler to trigger update download ---
-ipcMain.on("download_update", () => {
-    log.info("User initiated update download.");
-    autoUpdater.downloadUpdate();
-});
-
-// --- Backend Management Functions (rest of your backend functions remain the same) ---
+// --- Backend Management Functions ---
 
 /**
  * Determines the correct path to the backend executable.
@@ -254,16 +248,31 @@ app.on("window-all-closed", () => {
     }
 });
 
-app.on("will-quit", () => {
+app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") {
+        app.quit();
+    }
+});
+
+app.on("will-quit", async (event) => {
+    event.preventDefault();
+
     if (backendProcess) {
         console.log("Terminating backend process...");
 
         let killTimeout;
+
+        const cleanupAndExit = () => {
+            clearTimeout(killTimeout);
+            backendProcess = null; // Clear the backend process reference
+            app.exit(); // Allow Electron to quit
+        };
+
+        // Fallback function to kill the process if graceful shutdown fails
         const checkAndKill = () => {
-            // Check if the process is still running
-            // process.kill(pid, 0) attempts to send a signal of 0, which only checks for the existence of the process.
-            // It will throw an error if the process does not exist.
             try {
+                // Check if the process is still running. Signal 0 on Unix, but just checks existence on Windows.
+                // It will throw an error if the process does not exist.
                 process.kill(backendProcess.pid, 0);
                 // If no error, process is still running, send SIGKILL
                 console.log(
@@ -271,31 +280,68 @@ app.on("will-quit", () => {
                 );
                 backendProcess.kill("SIGKILL");
             } catch (e) {
-                // Process does not exist (already terminated)
-                console.log("Backend process already terminated.");
+                // Process does not exist (already terminated or didn't exist to begin with)
+                console.log(
+                    "Backend process already terminated or does not exist (during force kill check)."
+                );
             } finally {
-                clearTimeout(killTimeout); // Clear any pending timeout
+                cleanupAndExit(); // Proceed to exit Electron
             }
         };
 
-        // Attempt to gracefully terminate first
-        backendProcess.kill("SIGTERM");
-        console.log("Sent SIGTERM to backend process.");
-
-        // Set a timeout to forcefully kill if it doesn't exit gracefully
-        killTimeout = setTimeout(checkAndKill, 5000); // Give it 5 seconds to respond to SIGTERM
-
-        // Listen for the 'close' event to know when it has actually exited
-        backendProcess.on("close", (code) => {
+        // Attach 'close' and 'error' listeners BEFORE sending termination signals/requests
+        // This ensures we catch events if the process exits very quickly.
+        backendProcess.once("close", (code) => {
             console.log(`Backend process closed with code ${code}`);
-            clearTimeout(killTimeout); // Clear the forceful kill timeout if it closes gracefully
+            cleanupAndExit(); // Clean up and exit Electron
         });
 
-        backendProcess.on("error", (err) => {
+        backendProcess.once("error", (err) => {
             console.error(
                 `Error with backend process during termination: ${err.message}`
             );
-            clearTimeout(killTimeout);
+            cleanupAndExit(); // Clean up and exit Electron even on error
         });
+
+        // Step 1: Attempt to gracefully shut down via API endpoint
+        try {
+            console.log("Sending shutdown request to backend API endpoint...");
+            // Dynamically import node-fetch here, inside the async function
+            // This is the fix for ERR_REQUIRE_ESM
+            const { default: fetch } = await import("node-fetch");
+
+            const response = await fetch(BACKEND_SHUTDOWN_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+            });
+
+            if (response.ok) {
+                console.log(
+                    "Backend shutdown endpoint called successfully. Waiting for process to exit..."
+                );
+                // The 'close' event listener should now catch the exit, or the timeout will.
+            } else {
+                console.error(
+                    `Backend shutdown endpoint returned error: ${response.status} ${response.statusText}. Proceeding with signal termination.`
+                );
+                // Fallback to signals if API call failed
+                backendProcess.kill("SIGTERM");
+                console.log("Sent SIGTERM to backend process (as fallback).");
+            }
+        } catch (error) {
+            // This catch block handles network errors (e.g., backend not reachable)
+            // or errors during the dynamic import itself.
+            console.error(
+                `Error calling backend shutdown endpoint: ${error.message}. Proceeding with signal termination.`
+            );
+            backendProcess.kill("SIGTERM");
+            console.log("Sent SIGTERM to backend process (as fallback).");
+        }
+
+        // Set a timeout to forcefully kill if it doesn't exit gracefully within 5 seconds
+        killTimeout = setTimeout(checkAndKill, 5000);
+    } else {
+        console.log("No backend process to terminate.");
+        app.exit(); // Allow Electron to quit immediately if no backend process exists
     }
 });
