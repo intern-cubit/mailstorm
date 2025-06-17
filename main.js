@@ -5,7 +5,7 @@ const fs = require("fs");
 const http = require("http");
 const { autoUpdater } = require("electron-updater");
 const log = require("electron-log");
-const { exec } = require('child_process');
+const { exec } = require("child_process");
 
 // --- Function to kill a process on a specific port (Windows-specific) ---
 // This function now returns a Promise, allowing us to await its completion.
@@ -18,11 +18,18 @@ function killPort(port) {
         exec(command, (err, stdout, stderr) => {
             if (err) {
                 // If the error indicates "No process found" or similar, it's not a true failure for our purpose
-                if (stderr.includes("No process found") || stderr.includes("not found")) {
-                    console.log(`[KILLPORT] No process found on port ${port}, proceeding.`);
+                if (
+                    stderr.includes("No process found") ||
+                    stderr.includes("not found")
+                ) {
+                    console.log(
+                        `[KILLPORT] No process found on port ${port}, proceeding.`
+                    );
                     resolve(); // Resolve, as the port is clear
                 } else {
-                    console.error(`[KILLPORT] Error killing port ${port}: ${stderr}`);
+                    console.error(
+                        `[KILLPORT] Error killing port ${port}: ${stderr}`
+                    );
                     // You might choose to reject here if a true error occurred,
                     // but for startup, often just logging is sufficient if the port is cleared.
                     // For now, we'll resolve even on error so the app can attempt to start.
@@ -39,7 +46,7 @@ function killPort(port) {
 
 // --- Global Variables ---
 let backendProcess;
-let mainWindow;
+let mainWindow = null; // Initialize to null
 const BACKEND_PORT = 8000;
 const BACKEND_HEALTH_URL = `http://localhost:${BACKEND_PORT}/health`;
 const BACKEND_SHUTDOWN_URL = `http://localhost:${BACKEND_PORT}/shutdown`;
@@ -51,14 +58,16 @@ autoUpdater.autoDownload = true;
 
 autoUpdater.on("checking-for-update", () => {
     log.info("Checking for update...");
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        // ADDED CHECK
         mainWindow.webContents.send("update-status", "Checking for update...");
     }
 });
 
 autoUpdater.on("update-available", (info) => {
     log.info(`Update available: v${info.version}`);
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        // ADDED CHECK
         mainWindow.webContents.send(
             "update-status",
             `Update available: v${info.version}`
@@ -69,7 +78,8 @@ autoUpdater.on("update-available", (info) => {
 
 autoUpdater.on("update-not-available", () => {
     log.info("Update not available.");
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        // ADDED CHECK
         mainWindow.webContents.send(
             "update-status",
             "No new update available."
@@ -82,14 +92,16 @@ autoUpdater.on("download-progress", (progressObj) => {
     log_message += ` - Downloaded ${progressObj.percent.toFixed(2)}%`;
     log_message += ` (${progressObj.transferred} / ${progressObj.total} bytes)`;
     log.info(log_message);
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        // ADDED CHECK
         mainWindow.webContents.send("update-progress", progressObj.percent);
     }
 });
 
 autoUpdater.on("update-downloaded", (info) => {
     log.info("Update downloaded.");
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        // ADDED CHECK
         mainWindow.webContents.send(
             "update-status",
             `Update downloaded: v${info.version}. Click 'Restart & Install' to apply.`
@@ -100,7 +112,8 @@ autoUpdater.on("update-downloaded", (info) => {
 
 autoUpdater.on("error", (err) => {
     log.error("Error in auto-updater:", err);
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        // ADDED CHECK
         mainWindow.webContents.send(
             "update-status",
             `Error during update: ${err.message}`
@@ -255,24 +268,35 @@ function createWindow() {
     }
 
     mainWindow.webContents.openDevTools();
+
+    // Handle window close event to nullify mainWindow reference
+    mainWindow.on("closed", () => {
+        console.log(
+            "[MAIN WINDOW] mainWindow was closed, setting reference to null."
+        );
+        mainWindow = null;
+    });
 }
 
-
-// --- Electron App Lifecycle Events ---
-
-// Implement Single Instance Lock
-// This must be called early in the main process
 const gotTheLock = app.requestSingleInstanceLock();
-console.log(`[APP LIFECYCLE] Single instance lock attempt: ${gotTheLock ? "Acquired" : "Failed (another instance detected)"}`);
+console.log(
+    `[APP LIFECYCLE] Single instance lock attempt: ${
+        gotTheLock ? "Acquired" : "Failed (another instance detected)"
+    }`
+);
 
 if (!gotTheLock) {
     // If another instance is running, quit this one immediately
-    console.log("[APP LIFECYCLE] Another instance of the application is already running. Quitting this instance.");
+    console.log(
+        "[APP LIFECYCLE] Another instance of the application is already running. Quitting this instance."
+    );
     app.quit();
 } else {
     // If this is the primary instance, set up second-instance handling
-    app.on('second-instance', (event, commandLine, workingDirectory) => {
-        console.log("[APP LIFECYCLE] Second instance attempted to launch. Focusing existing window.");
+    app.on("second-instance", (event, commandLine, workingDirectory) => {
+        console.log(
+            "[APP LIFECYCLE] Second instance attempted to launch. Focusing existing window."
+        );
         // Someone tried to run a second instance, focus our main window
         if (mainWindow) {
             if (mainWindow.isMinimized()) mainWindow.restore();
@@ -281,7 +305,8 @@ if (!gotTheLock) {
     });
 
     // Proceed with the main app initialization for the primary instance
-    app.on("ready", async () => { // Make app.on("ready") async to use await
+    app.on("ready", async () => {
+        // Make app.on("ready") async to use await
         console.log("[APP LIFECYCLE] Electron app 'ready' event fired.");
 
         try {
@@ -290,8 +315,13 @@ if (!gotTheLock) {
             console.log("[APP LIFECYCLE] killPort operation completed.");
         } catch (error) {
             // This catch block will only hit if killPort explicitly rejects its Promise
-            console.error(`[APP LIFECYCLE] Critical error during killPort operation: ${error.message}. Quitting application.`);
-            dialog.showErrorBox("Port Cleaning Error", `Could not ensure port ${BACKEND_PORT} is free: ${error.message}. Application will quit.`);
+            console.error(
+                `[APP LIFECYCLE] Critical error during killPort operation: ${error.message}. Quitting application.`
+            );
+            dialog.showErrorBox(
+                "Port Cleaning Error",
+                `Could not ensure port ${BACKEND_PORT} is free: ${error.message}. Application will quit.`
+            );
             app.quit();
             return; // Ensure no further execution if we quit
         }
@@ -300,6 +330,8 @@ if (!gotTheLock) {
 
         pollBackendReady(() => {
             createWindow();
+            // Only start auto-updater check after mainWindow is created and available
+            // The auto-updater event handlers already have the `mainWindow && !mainWindow.isDestroyed()` checks.
             setTimeout(() => {
                 autoUpdater.checkForUpdatesAndNotify();
             }, 5000);
@@ -309,10 +341,14 @@ if (!gotTheLock) {
             // On macOS, usually re-create a window when the dock icon is clicked and no other windows are open.
             // With single instance lock, this will only run if this is the primary instance.
             if (BrowserWindow.getAllWindows().length === 0) {
-                console.log("[APP LIFECYCLE] Activate event: No windows open, creating one.");
+                console.log(
+                    "[APP LIFECYCLE] Activate event: No windows open, creating one."
+                );
                 createWindow();
             } else {
-                console.log("[APP LIFECYCLE] Activate event: Windows already open, focusing.");
+                console.log(
+                    "[APP LIFECYCLE] Activate event: Windows already open, focusing."
+                );
                 // This might be redundant with second-instance, but good for clarity
                 if (mainWindow) {
                     if (mainWindow.isMinimized()) mainWindow.restore();
@@ -323,7 +359,6 @@ if (!gotTheLock) {
     });
 }
 
-
 app.on("window-all-closed", () => {
     // Quit the app when all windows are closed, except on macOS
     // where apps typically stay active in the menu bar until explicitly quit.
@@ -333,11 +368,12 @@ app.on("window-all-closed", () => {
     }
 });
 
-
 app.on("will-quit", async (event) => {
     // Prevent default behavior to allow custom shutdown logic
     event.preventDefault();
-    console.log("[APP LIFECYCLE] 'will-quit' event fired. Initiating backend termination sequence.");
+    console.log(
+        "[APP LIFECYCLE] 'will-quit' event fired. Initiating backend termination sequence."
+    );
 
     if (backendProcess) {
         console.log("Terminating backend process...");
@@ -347,7 +383,9 @@ app.on("will-quit", async (event) => {
         const cleanupAndExit = () => {
             clearTimeout(killTimeout);
             backendProcess = null; // Clear the backend process reference
-            console.log("[APP LIFECYCLE] Backend process reference cleared. Allowing Electron to exit.");
+            console.log(
+                "[APP LIFECYCLE] Backend process reference cleared. Allowing Electron to exit."
+            );
             app.exit(); // Allow Electron to quit
         };
 
