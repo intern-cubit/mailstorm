@@ -26,12 +26,15 @@ function Dashboard() {
     const [selectedVariables, setSelectedVariables] = useState([]);
 
     // States for email configuration
-    const [senderEmail, setSenderEmail] = useState("");
-    const [senderPassword, setSenderPassword] = useState("");
-    const [smtpServer, setSmtpServer] = useState("");
-    const [smtpPort, setSmtpPort] = useState(587); // Default to TLS port
+    // const [senderEmail, setSenderEmail] = useState("");
+    // const [senderPassword, setSenderPassword] = useState("");
+    // const [smtpServer, setSmtpServer] = useState("");
+    // const [smtpPort, setSmtpPort] = useState(587); // Default to TLS port
     const [isHtmlEmail, setIsHtmlEmail] = useState(false); // Default to plain text (false)
     const [isBccMode, setIsBccMode] = useState(false);
+    const [emailConfigs, setEmailConfigs] = useState([
+        { senderEmail: '', senderPassword: '', smtpServer: '', smtpPort: 587 }
+    ]);
 
     // States for campaign results
     const [successfulSends, setSuccessfulSends] = useState(0); // Count
@@ -225,8 +228,13 @@ function Dashboard() {
             setIsLoading(false);
             return;
         }
-        if (!senderEmail || !senderPassword || !smtpServer || !smtpPort) {
-            setError("Please fill in all sender email configuration details.");
+
+        // Validate all email configurations
+        const invalidConfigs = emailConfigs.some(config =>
+            !config.senderEmail || !config.senderPassword || !config.smtpServer || !config.smtpPort
+        );
+        if (invalidConfigs) {
+            setError("Please fill in all details for all sender email configurations.");
             setIsLoading(false);
             return;
         }
@@ -238,10 +246,7 @@ function Dashboard() {
         formData.append("message", message);
         formData.append("csv_file", csvFile);
         formData.append("variables", JSON.stringify(selectedVariables));
-        formData.append("sender_email", senderEmail);
-        formData.append("sender_password", senderPassword);
-        formData.append("smtp_server", smtpServer);
-        formData.append("smtp_port", smtpPort);
+        formData.append("email_configs", JSON.stringify(emailConfigs));
         formData.append("html_content", actualHtmlContent);
         formData.append("bcc_mode", isBccMode);
 
@@ -295,7 +300,12 @@ function Dashboard() {
             case 1:
                 return csvFile && csvData && csvColumns.some(col => col.toLowerCase() === 'email');
             case 2:
-                return senderEmail && senderPassword && smtpServer && smtpPort;
+                return emailConfigs.every(config =>
+                    config.senderEmail &&
+                    config.senderPassword &&
+                    config.smtpServer &&
+                    config.smtpPort
+                );
             case 3:
                 return subject.trim() && message.trim();
             default:
@@ -424,7 +434,7 @@ function Dashboard() {
                             <p className="text-gray-600 dark:text-gray-400">Set up your sender email and SMTP settings</p>
                         </div>
 
-                        <EmailConfig
+                        {/* <EmailConfig
                             senderEmail={senderEmail}
                             onSenderEmailChange={setSenderEmail}
                             senderPassword={senderPassword}
@@ -433,6 +443,10 @@ function Dashboard() {
                             onSmtpServerChange={setSmtpServer}
                             smtpPort={smtpPort}
                             onSmtpPortChange={setSmtpPort}
+                        /> */}
+                        <EmailConfig
+                            emailConfigs={emailConfigs}
+                            onEmailConfigsChange={setEmailConfigs}
                         />
                     </div>
                 );
@@ -477,7 +491,11 @@ function Dashboard() {
                                 </div>
                                 <div>
                                     <p className="text-gray-600 dark:text-gray-400">Sender:</p>
-                                    <p className="font-medium text-gray-900 dark:text-white">{senderEmail || "Not configured"}</p>
+                                    <p className="font-medium text-gray-900 dark:text-white">
+                                        {emailConfigs.length > 0
+                                            ? `${emailConfigs.length} configuration(s) added`
+                                            : "Not configured"}
+                                    </p>
                                 </div>
                                 <div>
                                     <p className="text-gray-600 dark:text-gray-400">Variables:</p>

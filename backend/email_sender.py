@@ -6,16 +6,14 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from typing import List, Optional, Dict
-import time
-import random
-
 import sys
 import appdirs
 import logging
 from logging.handlers import RotatingFileHandler
+from collections import deque
 
-APP_AUTHOR = "YourCompany"
-APP_NAME = "CampaignFlow"
+APP_AUTHOR = "Obzentechnolabs"
+APP_NAME = "EmailStorm"
 
 LOG_FILE_PATH = os.path.join(appdirs.user_data_dir(APP_NAME, APP_AUTHOR), "app.log")
 os.makedirs(os.path.dirname(LOG_FILE_PATH), exist_ok=True)
@@ -23,7 +21,7 @@ os.makedirs(os.path.dirname(LOG_FILE_PATH), exist_ok=True)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-file_handler = RotatingFileHandler(LOG_FILE_PATH, maxBytes=1024*1024*5, backupCount=5, encoding='utf-8')
+file_handler = RotatingFileHandler(LOG_FILE_PATH, maxBytes=1024 * 1024 * 5, backupCount=5, encoding='utf-8')
 file_handler.setLevel(logging.INFO)
 
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -44,10 +42,6 @@ logger.addHandler(console_handler)
 
 def print(message):
     logger.info(message)
-# -----------------------------------------------------------------------------------
-
-# Reduced delay between sending each email to a maximum of 5 seconds
-DELAY_BETWEEN_EMAILS = (1, 5) 
 
 def replace_variables_in_message(template: str, row_data: dict, variables: List[str]) -> str:
     """
@@ -59,7 +53,7 @@ def replace_variables_in_message(template: str, row_data: dict, variables: List[
         if variable in row_data and pd.notna(row_data[variable]):
             value = str(row_data[variable])
         else:
-            value = "" # Replace with empty string if variable is not found or is NaN
+            value = "" 
         personalized_text = personalized_text.replace(placeholder, value)
     return personalized_text
 
@@ -71,8 +65,8 @@ def send_single_email(
     body: str,
     smtp_server: str,
     smtp_port: int,
-    html_content: bool, 
-    bcc_mode: bool,     
+    html_content: bool,
+    bcc_mode: bool,
     attachment_path: Optional[str] = None
 ) -> bool:
     """
@@ -84,15 +78,14 @@ def send_single_email(
     msg['Subject'] = subject
 
     if bcc_mode:
-        msg['Bcc'] = receiver_email
+        msg['To'] = ""
     else:
         msg['To'] = receiver_email
 
-    # Attach the message body (plain or HTML)
     if html_content:
-        msg.attach(MIMEText(body, 'html', 'utf-8')) # Specify 'html' subtype and utf-8 encoding
+        msg.attach(MIMEText(body, 'html', 'utf-8')) 
     else:
-        msg.attach(MIMEText(body, 'plain', 'utf-8')) # Specify 'plain' subtype and utf-8 encoding
+        msg.attach(MIMEText(body, 'plain', 'utf-8')) 
 
     if attachment_path and os.path.exists(attachment_path):
         try:
@@ -112,12 +105,16 @@ def send_single_email(
 
     try:
         with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
+            server.starttls() 
             server.login(sender_email, sender_password)
-            server.send_message(msg)
-            
+
+            if bcc_mode:
+                server.send_message(msg, from_addr=sender_email, to_addrs=[receiver_email])
+            else:
+                server.send_message(msg, from_addr=sender_email, to_addrs=[receiver_email])
+
         send_type = "BCC" if bcc_mode else "TO"
-        print(f"Email sent ({send_type}) to {receiver_email} with subject: '{subject}'")
+        print(f"Email sent ({send_type}) to {receiver_email} with subject: '{subject}' using sender: {sender_email}")
         return True
     except smtplib.SMTPAuthenticationError:
         print(f"Authentication failed for {sender_email}. Check password/app password and SMTP settings. For Gmail/Outlook, use an App Password.")
@@ -135,22 +132,23 @@ def send_emails_from_dataframe_enhanced(
     subject_template: str,
     message_template: str,
     variables: List[str],
-    sender_email: str,
-    sender_password: str,
-    smtp_server: str,
-    smtp_port: int,
-    html_content: bool, 
-    bcc_mode: bool,     
+    email_configs: List[Dict[str, str]], 
+    html_content: bool,
+    bcc_mode: bool,
     media_path: Optional[str] = None
-) -> Dict[str, List[str]]: # Changed return type to include lists of emails
-    """
-    Send personalized emails using dynamic variables from CSV.
-    Returns a dictionary with lists of successful and failed email addresses.
-    """
+) -> Dict[str, List[str]]:
     successful_emails: List[str] = []
     failed_emails: List[str] = []
 
-    print(f"Starting email campaign from {sender_email} (HTML: {html_content}, BCC: {bcc_mode})...")
+    if not email_configs:
+        print("No email configurations provided. Email sending will fail for all recipients.")
+        failed_emails = [str(row.get("email", "N/A")) for index, row in df.iterrows()]
+        return {"successful_emails": [], "failed_emails": failed_emails}
+
+    print(f"Starting email campaign (HTML: {html_content}, BCC: {bcc_mode})...")
+    print(f"Found {len(email_configs)} sender configurations.")
+
+    config_queue = deque(email_configs)
 
     for index, row in df.iterrows():
         receiver_email = str(row.get("email", "")).strip()
@@ -170,16 +168,19 @@ def send_emails_from_dataframe_enhanced(
         personalized_subject = replace_variables_in_message(subject_template, row_dict, variables)
         personalized_message = replace_variables_in_message(message_template, row_dict, variables)
 
-        print(f"Sending email to {receiver_email}...")
+        current_config = config_queue[0]
+        config_queue.rotate(-1)
+
+        print(f"Attempting to send email to {receiver_email} using sender: {current_config['senderEmail']}...")
 
         success = send_single_email(
-            sender_email=sender_email,
-            sender_password=sender_password,
+            sender_email=current_config['senderEmail'],
+            sender_password=current_config['senderPassword'],
             receiver_email=receiver_email,
             subject=personalized_subject,
             body=personalized_message,
-            smtp_server=smtp_server,
-            smtp_port=smtp_port,
+            smtp_server=current_config['smtpServer'],
+            smtp_port=current_config['smtpPort'],
             html_content=html_content,
             bcc_mode=bcc_mode,
             attachment_path=media_path
@@ -189,11 +190,6 @@ def send_emails_from_dataframe_enhanced(
             successful_emails.append(receiver_email)
         else:
             failed_emails.append(receiver_email)
-
-        # Apply delay between emails
-        sleep_time = random.randint(*DELAY_BETWEEN_EMAILS)
-        print(f"Sleeping {sleep_time}s before next email...\n")
-        time.sleep(sleep_time)
 
     print("Email campaign finished!")
     print(f"Summary: {len(successful_emails)} emails sent successfully, {len(failed_emails)} failed.")

@@ -11,7 +11,7 @@ import sys # Import sys for sys.exit()
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from contextlib import asynccontextmanager
 import logging
 
@@ -88,6 +88,13 @@ class ActivationRequest(BaseModel):
     processorId: str
     activationKey: str
 
+class EmailConfig(BaseModel):
+    senderEmail: str = Field(..., alias="senderEmail", description="Sender's email address")
+    senderPassword: str = Field(..., alias="senderPassword", description="Sender's email password or app password")
+    smtpServer: str = Field(..., alias="smtpServer", description="SMTP server address (e.g., smtp.gmail.com)")
+    smtpPort: int = Field(587, alias="smtpPort", description="SMTP server port (e.g., 587 for TLS, 465 for SSL)")
+
+
 def get_motherboard_serial():
     try:
         try:
@@ -142,7 +149,7 @@ def generate_activation_key(processorId: str, motherboardSerial: str) -> str:
     """
     input_string = f"{processorId}:{motherboardSerial}".upper()
 
-    hash_object = hashlib.sha256()
+    hash_object = hashlib.sha512()
     hash_object.update(input_string.encode('utf-8'))
     hex_hash = hash_object.hexdigest().upper()
 
@@ -309,18 +316,14 @@ async def preview_csv_endpoint(
             except OSError as e:
                 logger.error(f"Error cleaning up temp directory {temp_dir}: {e}")
 
-
 @app.post("/send-emails")
 async def send_emails_endpoint(
     subject: str = Form(..., description="Email subject template"),
     message: str = Form(..., description="Email body template (HTML or plain text) with variables like {name}"),
     csv_file: UploadFile = File(..., description="CSV with contact data"),
     variables: str = Form(..., description="JSON list of variable names used in template"),
+    email_configs: str = Form(..., description="JSON list of sender email configurations"), # CHANGED
     media_file: UploadFile = File(None, description="Optional media file to attach to all emails."),
-    sender_email: str = Form(..., description="Sender's email address"),
-    sender_password: str = Form(..., description="Sender's email password or app password"),
-    smtp_server: str = Form(..., description="SMTP server address (e.g., smtp.gmail.com)"),
-    smtp_port: int = Form(587, description="SMTP server port (e.g., 587 for TLS, 465 for SSL)"),
     html_content: bool = Form(False, description="True if the message is HTML, False for plain text"),
     bcc_mode: bool = Form(False, description="True to send emails as BCC, False for TO")
 ):
@@ -328,6 +331,22 @@ async def send_emails_endpoint(
         variable_list = json.loads(variables)
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid variables format. Must be a JSON array.")
+
+    try:
+        configs_data = json.loads(email_configs)
+        email_configs_list = [EmailConfig(**config).model_dump(by_alias=True) for config in configs_data]
+
+        if not email_configs_list:
+            raise HTTPException(status_code=400, detail="No email configurations provided.")
+
+        for config in email_configs_list:
+            if not all([config['senderEmail'], config['senderPassword'], config['smtpServer'], config['smtpPort']]):
+                raise HTTPException(status_code=400, detail="All fields in each email configuration must be filled.")
+
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid email configurations format. Must be a JSON array of objects.")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error validating email configurations: {e}")
 
     if not csv_file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Uploaded file is not a CSV.")
@@ -368,18 +387,14 @@ async def send_emails_endpoint(
             with open(media_path, "wb") as f:
                 f.write(await media_file.read())
 
-        from email_sender import send_emails_from_dataframe_enhanced
-
+        from email_sender import send_emails_from_dataframe_enhanced  
         send_results = send_emails_from_dataframe_enhanced(
             df=df,
             subject_template=subject,
             message_template=message,
             variables=variable_list,
+            email_configs=email_configs_list, 
             media_path=media_path,
-            sender_email=sender_email,
-            sender_password=sender_password,
-            smtp_server=smtp_server,
-            smtp_port=smtp_port,
             html_content=html_content,
             bcc_mode=bcc_mode
         )

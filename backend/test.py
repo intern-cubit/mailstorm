@@ -1,9 +1,12 @@
 import hashlib 
 
-def generate_activation_key(macId: str, motherboardSerial: str) -> str:
-    input_string = f"{macId}:{motherboardSerial}".upper()
+def generate_activation_key(processorId: str, motherboardSerial: str) -> str:
+    """
+    Generates an activation key similar to the provided JavaScript function.
+    """
+    input_string = f"{processorId}:{motherboardSerial}".upper()
 
-    hash_object = hashlib.sha256()
+    hash_object = hashlib.sha512()
     hash_object.update(input_string.encode('utf-8'))
     hex_hash = hash_object.hexdigest().upper()
 
@@ -14,10 +17,10 @@ def generate_activation_key(macId: str, motherboardSerial: str) -> str:
     while big_int_value > 0:
         big_int_value, remainder = divmod(big_int_value, 36)
         base36_result = base36_chars[remainder] + base36_result
-    
+
     if not base36_result:
         base36_result = "0"
-        
+
     base36 = base36_result.upper()
 
     raw_key = base36.zfill(16)[:16]
@@ -27,8 +30,8 @@ def generate_activation_key(macId: str, motherboardSerial: str) -> str:
     return formatted_key
 
 if __name__ == "__main__":
-    macId = "178BFBFF00860F01"
-    motherboardSerial = "L834NRCX00DUJ6MB"
+    macId = "BFEBFBFF000906A4"
+    motherboardSerial = "PPVCK048JH58C7"
     
     activation_key = generate_activation_key(macId, motherboardSerial)
     print(f"Generated Activation Key: {activation_key}")
