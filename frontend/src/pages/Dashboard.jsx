@@ -26,10 +26,6 @@ function Dashboard() {
     const [selectedVariables, setSelectedVariables] = useState([]);
 
     // States for email configuration
-    // const [senderEmail, setSenderEmail] = useState("");
-    // const [senderPassword, setSenderPassword] = useState("");
-    // const [smtpServer, setSmtpServer] = useState("");
-    // const [smtpPort, setSmtpPort] = useState(587); // Default to TLS port
     const [isHtmlEmail, setIsHtmlEmail] = useState(false); // Default to plain text (false)
     const [isBccMode, setIsBccMode] = useState(false);
     const [emailConfigs, setEmailConfigs] = useState([
@@ -434,16 +430,6 @@ function Dashboard() {
                             <p className="text-gray-600 dark:text-gray-400">Set up your sender email and SMTP settings</p>
                         </div>
 
-                        {/* <EmailConfig
-                            senderEmail={senderEmail}
-                            onSenderEmailChange={setSenderEmail}
-                            senderPassword={senderPassword}
-                            onSenderPasswordChange={setSenderPassword}
-                            smtpServer={smtpServer}
-                            onSmtpServerChange={setSmtpServer}
-                            smtpPort={smtpPort}
-                            onSmtpPortChange={setSmtpPort}
-                        /> */}
                         <EmailConfig
                             emailConfigs={emailConfigs}
                             onEmailConfigsChange={setEmailConfigs}
@@ -626,13 +612,18 @@ function Dashboard() {
                             </div>
                         )}
 
-
                         {/* Send Button */}
                         <button
                             onClick={handleSubmit}
-                            disabled={isLoading || !csvFile || !subject.trim() || !message.trim() ||
+                            disabled={
+                                isLoading ||
+                                !csvFile ||
+                                !subject.trim() ||
+                                !message.trim() ||
                                 (selectedVariables.length > 0 && !selectedVariables.every(v => csvColumns.includes(v))) ||
-                                !senderEmail || !senderPassword || !smtpServer || !smtpPort}
+                                emailConfigs.length === 0 || // Ensure at least one config exists
+                                emailConfigs.some(config => !config.senderEmail || !config.senderPassword || !config.smtpServer || !config.smtpPort) // Validate all configs
+                            }
                             className="w-full px-8 py-6 bg-gradient-to-r from-teal-500 to-green-600 text-white text-2xl font-bold rounded-xl hover:from-teal-600 hover:to-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center transform hover:-translate-y-1"
                         >
                             {isLoading ? (
@@ -656,9 +647,9 @@ function Dashboard() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50 dark:from-[#111827] dark:via-black dark:to-[#10151b] text-gray-900 dark:text-white transition-colors duration-500">
+        <div className="min-h-screen bg-transparent">
             <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-                <Header />
+                {/* <Header /> */}
                 <UpdateStatus />
 
                 {/* Step Progress Indicator */}

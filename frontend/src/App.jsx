@@ -4,10 +4,11 @@ import Dashboard from './pages/Dashboard'
 import './index.css' // Assuming you have a basic CSS file for Tailwind or global styles
 import { Info } from 'lucide-react';
 import SystemActivation from './pages/SystemActivation';
+import Header from './components/Header';
 
 export default function App() {
     const [isActivated, setIsActivated] = useState(null);
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'; 
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
     useEffect(() => {
         const checkActivation = async () => {
@@ -21,7 +22,7 @@ export default function App() {
                     throw new Error('Network response was not ok');
                 }
                 const data = await response.json();
-                setIsActivated(data.isActivated); 
+                setIsActivated(data.isActivated);
                 console.log("Activation check result:", data.message);
             } catch (error) {
                 console.error('Error checking activation status:', error);
@@ -30,7 +31,7 @@ export default function App() {
         };
 
         checkActivation();
-    }, []); 
+    }, []);
 
     if (isActivated === null) {
         return (
@@ -44,12 +45,15 @@ export default function App() {
     }
 
     return (
-        <ThemeProvider>
-            {isActivated ? (
-                <Dashboard />
-            ) : (
-                <SystemActivation onActivationSuccess={() => setIsActivated(true)} />
-            )}
+        <ThemeProvider >
+            <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50 dark:from-[#111827] dark:via-black dark:to-[#10151b] text-gray-900 dark:text-white transition-colors duration-500">
+                <Header />
+                {isActivated ? (
+                    <Dashboard />
+                ) : (
+                    <SystemActivation onActivationSuccess={() => setIsActivated(true)} />
+                )}
+            </div>
         </ThemeProvider>
     );
 }

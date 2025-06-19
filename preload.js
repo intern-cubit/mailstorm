@@ -1,3 +1,4 @@
+// preload.js
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -6,6 +7,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onUpdateAvailable: (callback) => ipcRenderer.on('update-available', (_event, version) => callback(version)),
     onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', (_event) => callback()),
     onUpdateProgress: (callback) => ipcRenderer.on('update-progress', (_event, percent) => callback(percent)),
-    // --- NEW: Expose function to trigger update download ---
-    downloadUpdate: () => ipcRenderer.send('download_update')
+    downloadUpdate: () => ipcRenderer.send('download_update'),
+    // --- NEW: Expose functions for app control ---
+    reloadApp: () => ipcRenderer.send('reload_app'), // Sends message to reload current window
+    quitApp: () => ipcRenderer.send('quit_app')     // Sends message to quit the application
 });

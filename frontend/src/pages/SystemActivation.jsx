@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Computer, Fingerprint, Key, CheckCircle, XCircle, Info } from 'lucide-react';
-import Header from '../components/Header';
+// No need to import Header here unless it's explicitly rendered within SystemActivation,
+// which it isn't in the provided snippet.
+// import Header from '../components/Header';
+import toast from 'react-hot-toast'; // Import toast for notifications
 
 const SystemActivation = ({ onActivationSuccess }) => {
     // State variables to store system information, activation key, and messages
@@ -8,51 +11,79 @@ const SystemActivation = ({ onActivationSuccess }) => {
     const [processorId, setProcessorId] = useState('Loading...');
     const [activationKey, setActivationKey] = useState('');
     const [message, setMessage] = useState('');
-    const [isActivated, setIsActivated] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isActivated, setIsActivated] = useState(false); // Default to false
+    const [isLoadingSystemInfo, setIsLoadingSystemInfo] = useState(true); // Specific loading for system info
+    const [isLoadingActivationStatus, setIsLoadingActivationStatus] = useState(true); // Specific loading for activation status
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'; // Base URL for the backend API
 
-    // useEffect hook to fetch system information when the component mounts
+    // useEffect hook to fetch system information and initial activation status when the component mounts
     useEffect(() => {
-        // Function to fetch system details from the backend
-        const fetchSystemInfo = async () => {
+        const fetchAllInfo = async () => {
+            // Fetch System Info
             try {
-                // Fetch data from the /system-info endpoint
-                const response = await fetch('http://localhost:8000/system-info', {
+                const response = await fetch(`${API_BASE_URL}/system-info`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                 });
                 const data = await response.json();
-
-                // Update state with fetched data
                 setMotherboardSerial(data.motherboardSerial);
                 setProcessorId(data.processorId);
-                setMessage(''); // Clear any previous messages
             } catch (error) {
-                // Handle errors during fetching
                 console.error('Error fetching system info:', error);
                 setMotherboardSerial('Error fetching');
                 setProcessorId('Error fetching');
-                setMessage('Failed to fetch system information. Ensure the backend is running.');
+                toast.error('Failed to fetch system information. Ensure the backend is running.');
             } finally {
-                setIsLoading(false); // Set loading to false after fetch attempt
+                setIsLoadingSystemInfo(false);
+            }
+
+            // Check Activation Status
+            try {
+                const response = await fetch(`${API_BASE_URL}/check-activation`);
+                const data = await response.json();
+                if (response.ok && data.isActivated) {
+                    setIsActivated(true);
+                    setMessage('System is already activated!');
+                    toast.success('System is already activated!');
+                    if (onActivationSuccess) {
+                        onActivationSuccess(); // Trigger navigation if already activated
+                    }
+                } else {
+                    setIsActivated(false);
+                    setMessage('System is not activated. Please enter your key.');
+                }
+            } catch (error) {
+                console.error('Error checking initial activation status:', error);
+                setMessage('Failed to check activation status. Backend unreachable?');
+                setIsActivated(false); // Ensure it's false on error
+                toast.error('Failed to check initial activation status.');
+            } finally {
+                setIsLoadingActivationStatus(false);
             }
         };
 
-        fetchSystemInfo(); // Call the fetch function
-    }, []); // Empty dependency array means this runs once on mount
+        fetchAllInfo();
+    }, [API_BASE_URL, onActivationSuccess]); // Re-run if base URL or success callback changes
 
     // Function to handle the activation key submission
     const handleActivate = async () => {
         if (!activationKey) {
             setMessage('Please enter an activation key.');
+            toast.error('Please enter an activation key.');
             return;
         }
 
-        if (motherboardSerial.startsWith('Error') || processorId.startsWith('Error') || isLoading) {
-            setMessage('System information is not fully loaded or there was an error. Please wait or refresh.');
+        if (isLoadingSystemInfo || isLoadingActivationStatus) {
+            setMessage('System information or activation status is still loading. Please wait.');
+            toast.warn('System information or activation status is still loading. Please wait.');
+            return;
+        }
+
+        if (motherboardSerial.startsWith('Error') || processorId.startsWith('Error')) {
+            setMessage('Cannot activate: System information could not be retrieved.');
+            toast.error('Cannot activate: System information could not be retrieved.');
             return;
         }
 
@@ -69,34 +100,40 @@ const SystemActivation = ({ onActivationSuccess }) => {
                 }),
             });
 
-            // Always try to parse JSON, even if response is not ok, as FastAPI sends JSON error details
             const data = await response.json();
 
             if (response.ok) {
                 setMessage(data.message);
                 setIsActivated(data.success);
 
-                if (data.success && onActivationSuccess) {
-                    onActivationSuccess();
+                if (data.success) {
+                    toast.success(data.message);
+                    if (onActivationSuccess) {
+                        onActivationSuccess(); // Trigger navigation
+                    }
+                } else {
+                    toast.error(`Activation failed: ${data.message}`);
                 }
+                setActivationKey('');
             } else {
                 const errorMessage = data.detail || data.message || `HTTP error! status: ${response.status}`;
                 setMessage(`Activation failed: ${errorMessage}`);
                 setIsActivated(false);
+                toast.error(`Activation failed: ${errorMessage}`);
                 console.error('Activation failed response:', data); // Log the full error data from backend
             }
         } catch (error) {
             console.error('Network error during activation:', error); // Network errors (e.g., server not running)
             setMessage('Failed to activate. Please check your network connection and ensure the backend is running.');
             setIsActivated(false);
+            toast.error('Failed to activate. Check network/backend.');
         }
     };
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-blue-950 font-inter">
-            {/* Header at the top */}
-            <Header />
+    const overallLoading = isLoadingSystemInfo || isLoadingActivationStatus;
 
+    return (
+        <div className="min-h-screen font-inter">
             {/* Main content centered */}
             <div className="p-4 sm:p-6 flex items-center justify-center min-h-[calc(100vh-80px)]">
                 <div className="w-full max-w-2xl bg-white/70 backdrop-blur-lg border border-gray-200 dark:bg-[rgba(30,30,30,0.5)] dark:backdrop-blur-md dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-xl">
@@ -115,17 +152,17 @@ const SystemActivation = ({ onActivationSuccess }) => {
                             <div className="flex items-center text-gray-800 dark:text-gray-200">
                                 <Computer className="mr-3 text-blue-600 dark:text-blue-400" size={20} />
                                 <span className="font-medium">Motherboard Serial:</span>
-                                <span className="ml-3 text-gray-600 dark:text-gray-300 break-all">{isLoading ? 'Loading...' : motherboardSerial}</span>
+                                <span className="ml-3 text-gray-600 dark:text-gray-300 break-all">{isLoadingSystemInfo ? 'Loading...' : motherboardSerial}</span>
                             </div>
                             <div className="flex items-center text-gray-800 dark:text-gray-200">
                                 <Fingerprint className="mr-3 text-blue-600 dark:text-blue-400" size={20} />
                                 <span className="font-medium">Processor ID:</span>
-                                <span className="ml-3 text-gray-600 dark:text-gray-300 break-all">{isLoading ? 'Loading...' : processorId}</span>
+                                <span className="ml-3 text-gray-600 dark:text-gray-300 break-all">{isLoadingSystemInfo ? 'Loading...' : processorId}</span>
                             </div>
                         </div>
-                        {isLoading && (
+                        {overallLoading && (
                             <div className="mt-4 text-center text-blue-600 dark:text-blue-400 animate-pulse">
-                                Fetching system details...
+                                Fetching system details and activation status...
                             </div>
                         )}
                     </div>
@@ -143,12 +180,12 @@ const SystemActivation = ({ onActivationSuccess }) => {
                                 value={activationKey}
                                 onChange={(e) => setActivationKey(e.target.value)}
                                 className="flex-grow p-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50/70 dark:bg-[rgba(30,30,30,0.5)] dark:backdrop-blur-sm text-gray-900 dark:text-white shadow-inner text-base transition-all duration-200"
-                                disabled={isLoading || isActivated}
+                                disabled={overallLoading || isActivated} // Use overallLoading
                             />
                             <button
                                 onClick={handleActivate}
                                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all duration-300 ease-in-out transform hover:scale-105 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={isLoading || isActivated}
+                                disabled={overallLoading || isActivated} // Use overallLoading
                             >
                                 {isActivated ? <CheckCircle className="mr-2" size={20} /> : <Key className="mr-2" size={20} />}
                                 {isActivated ? 'Activated' : 'Activate'}
@@ -156,7 +193,7 @@ const SystemActivation = ({ onActivationSuccess }) => {
                         </div>
                     </div>
 
-                    {/* Message Display - Replaces the OS compatibility note */}
+                    {/* Message Display */}
                     {message && (
                         <div className={`p-4 rounded-xl flex items-start ${isActivated ? 'bg-green-50/70 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-200' : 'bg-red-50/70 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'}`}>
                             {isActivated ? <CheckCircle className="mr-3 flex-shrink-0" size={20} /> : <XCircle className="mr-3 flex-shrink-0" size={20} />}

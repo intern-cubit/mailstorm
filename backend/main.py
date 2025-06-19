@@ -16,8 +16,10 @@ from contextlib import asynccontextmanager
 import logging
 
 # --- Logging Configuration ---
+# Configure logging for better output in console and potentially files
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO) # Set default level for this module's logger
+# logger.setLevel(logging.INFO) # Already set by basicConfig, but can override for this specific logger if needed
 
 # --- Global Shutdown Event ---
 shutdown_event = asyncio.Event()
@@ -77,9 +79,8 @@ try:
     logger.info(f"Ensured application data directory exists: {APP_DATA_PATH}")
 except OSError as e:
     logger.critical(f"CRITICAL ERROR: Could not create application data directory {APP_DATA_PATH}: {e}")
-    sys.exit(1) # Exit if essential directory cannot be created
+    sys.exit(1) 
 
-# Define the full path to the activation file
 ACTIVATION_FILE = os.path.join(APP_DATA_PATH, "activation.txt")
 
 
@@ -136,12 +137,16 @@ def get_processor_id():
         except (subprocess.CalledProcessError, FileNotFoundError, Exception) as e:
             logger.warning(f"Powershell WMI query for processor ID failed ({e}). Falling back to wmic.")
 
+    except Exception as e:
+        logger.warning(f"Initial attempt for processor ID failed. Falling back to wmic. Error: {e}")
+    try:
         result = subprocess.check_output("wmic cpu get processorId", shell=True, text=True)
         processor_id = result.split('\n')[1].strip()
         return processor_id
     except Exception as e:
         logger.error(f"Failed to get processor ID: {e}")
         return f"Error getting processor ID: {e}"
+
 
 def generate_activation_key(processorId: str, motherboardSerial: str) -> str:
     """
@@ -166,7 +171,7 @@ def generate_activation_key(processorId: str, motherboardSerial: str) -> str:
 
     base36 = base36_result.upper()
 
-    raw_key = base36.zfill(16)[:16]
+    raw_key = base36.zfill(16)[:16] # Ensure it's at least 16 chars and truncate if longer
 
     formatted_key = "-".join([raw_key[i:i+4] for i in range(0, len(raw_key), 4)])
 
@@ -210,7 +215,7 @@ async def activate_system_endpoint(request: ActivationRequest):
         logger.warning(f"Activation failed: Provided key '{request.activationKey}' does not match generated key '{generated_key}'.")
         return {"success": False, "message": "Activation failed: Invalid key."}
 
-@app.get("/check-activation")
+@app.get("/check-activation") 
 async def check_activation_endpoint():
     motherboard_serial = get_motherboard_serial()
     processor_id = get_processor_id()
@@ -218,15 +223,17 @@ async def check_activation_endpoint():
     if "Error" in motherboard_serial or "Error" in processor_id:
         error_message = f"Failed to retrieve system information for activation check. Motherboard: {motherboard_serial}, Processor: {processor_id}"
         logger.error(error_message)
+        # Attempt to remove invalid activation file if system info fails
         if os.path.exists(ACTIVATION_FILE):
             try:
                 os.remove(ACTIVATION_FILE)
+                logger.info(f"Deleted potentially invalid activation file {ACTIVATION_FILE} due to system info error.")
             except OSError as e:
                 logger.error(f"Error deleting activation file {ACTIVATION_FILE} during cleanup: {e}")
         return {"isActivated": False, "message": error_message}
 
     generated_key = generate_activation_key(processor_id, motherboard_serial)
-    logger.info(f"Check Activation: Generated Key: {generated_key}")
+    logger.info(f"Check Activation (Detail): Generated Key: {generated_key}")
 
     is_activated = False
     stored_key = None
@@ -235,15 +242,16 @@ async def check_activation_endpoint():
             try:
                 with open(ACTIVATION_FILE, "r") as f:
                     stored_key = f.read().strip()
-                logger.info(f"Check Activation: Stored Key: {stored_key}")
+                logger.info(f"Check Activation (Detail): Stored Key: {stored_key}")
 
                 if generated_key == stored_key:
                     is_activated = True
-                    logger.info("Check Activation: System is activated.")
+                    logger.info("Check Activation (Detail): System is activated.")
                 else:
-                    logger.warning("Check Activation: Generated key does not match stored key. Deleting activation file.")
+                    logger.warning("Check Activation (Detail): Generated key does not match stored key. Deleting activation file.")
                     try:
                         os.remove(ACTIVATION_FILE)
+                        logger.info(f"Deleted activation file {ACTIVATION_FILE} due to key mismatch.")
                     except OSError as e:
                         logger.error(f"Error deleting activation file {ACTIVATION_FILE} during mismatch: {e}")
             except IOError as e:
@@ -251,23 +259,38 @@ async def check_activation_endpoint():
                 if os.path.exists(ACTIVATION_FILE):
                     try:
                         os.remove(ACTIVATION_FILE)
+                        logger.error(f"Deleted unreadable activation file {ACTIVATION_FILE}.")
                     except OSError as e_del:
                         logger.error(f"Error deleting unreadable activation file {ACTIVATION_FILE}: {e_del}")
                 is_activated = False
         else:
-            logger.info("Check Activation: Activation file not found.")
+            logger.info("Check Activation (Detail): Activation file not found.")
 
     except Exception as e:
-        logger.error(f"Unhandled error during activation check: {e}", exc_info=True)
+        logger.error(f"Unhandled error during activation check (detail): {e}", exc_info=True)
         if os.path.exists(ACTIVATION_FILE):
             try:
                 os.remove(ACTIVATION_FILE)
+                logger.error(f"Deleted activation file {ACTIVATION_FILE} due to error during check.")
             except OSError as e_del:
                 logger.error(f"Error deleting activation file {ACTIVATION_FILE} due to error during check: {e_del}")
         is_activated = False
 
     return {"isActivated": is_activated, "message": "System is activated." if is_activated else "System is not activated."}
 
+@app.post("/logout")
+async def logout_endpoint():
+    if os.path.exists(ACTIVATION_FILE):
+        try:
+            os.remove(ACTIVATION_FILE)
+            logger.info(f"Activation file '{ACTIVATION_FILE}' deleted successfully for logout.")
+            return JSONResponse(content={"success": True, "message": "Logged out successfully (activation file deleted)." })
+        except OSError as e:
+            logger.error(f"Error deleting activation file '{ACTIVATION_FILE}' during logout: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to delete activation file: {e}")
+    else:
+        logger.info("Logout requested, but no activation file found.")
+        return JSONResponse(content={"success": True, "message": "No activation file found to delete (already logged out)." })
 
 @app.post("/preview-csv")
 async def preview_csv_endpoint(
@@ -387,13 +410,13 @@ async def send_emails_endpoint(
             with open(media_path, "wb") as f:
                 f.write(await media_file.read())
 
-        from email_sender import send_emails_from_dataframe_enhanced  
+        from email_sender import send_emails_from_dataframe_enhanced
         send_results = send_emails_from_dataframe_enhanced(
             df=df,
             subject_template=subject,
             message_template=message,
             variables=variable_list,
-            email_configs=email_configs_list, 
+            email_configs=email_configs_list,
             media_path=media_path,
             html_content=html_content,
             bcc_mode=bcc_mode

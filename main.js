@@ -1,4 +1,5 @@
-const { app, BrowserWindow, dialog, ipcMain } = require("electron");
+// main.js
+const { app, BrowserWindow, dialog, ipcMain, session } = require("electron"); // Import session for clearing data
 const path = require("path");
 const { spawn } = require("child_process");
 const fs = require("fs");
@@ -109,6 +110,39 @@ ipcMain.on("restart_app", () => {
     log.info("Restarting app to install update...");
     autoUpdater.quitAndInstall();
 });
+
+// --- NEW IPC LISTENERS ---
+ipcMain.on('reload_app', () => {
+    log.info("Received 'reload_app' signal. Reloading current window.");
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.reload(); // Reloads the renderer process
+    }
+});
+
+ipcMain.on('quit_app', () => {
+    log.info("Received 'quit_app' signal. Quitting application.");
+    app.quit(); // Quits the entire Electron application
+});
+
+ipcMain.on('logout-and-relaunch', async (event) => {
+    log.info("Received 'logout-and-relaunch' signal. Clearing data and relaunching.");
+    // Optional: Clear session data before relaunching for a cleaner state
+    try {
+        if (session && session.defaultSession) {
+            await session.defaultSession.clearStorageData(); // Clears local storage, cookies, indexedDB, etc.
+            await session.defaultSession.clearCache(); // Clears HTTP cache
+            log.info('Electron session data and cache cleared.');
+        } else {
+            log.warn('Electron session is not available for clearing data.');
+        }
+    } catch (error) {
+        log.error('Failed to clear session data:', error);
+    }
+
+    app.relaunch(); // Prepares the app to restart
+    app.quit();     // Quits the current instance, triggering the relaunch
+});
+// --- END NEW IPC LISTENERS ---
 
 function getBackendExecutablePath() {
     if (app.isPackaged) {
@@ -377,7 +411,7 @@ app.on("will-quit", async (event) => {
 
         try {
             console.log("Sending shutdown request to backend API endpoint...");
-            const { default: fetch } = await import("node-fetch");
+            const { default: fetch } = await import("node-fetch"); // Ensure node-fetch is available if you don't have it globally
 
             const response = await fetch(BACKEND_SHUTDOWN_URL, {
                 method: "POST",
