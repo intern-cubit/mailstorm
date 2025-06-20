@@ -22,6 +22,7 @@ export default function App() {
                     throw new Error('Network response was not ok');
                 }
                 const data = await response.json();
+                console.log(data)
                 setIsActivated(data.isActivated);
                 console.log("Activation check result:", data.message);
             } catch (error) {

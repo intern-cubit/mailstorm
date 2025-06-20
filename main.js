@@ -119,9 +119,22 @@ ipcMain.on('reload_app', () => {
     }
 });
 
-ipcMain.on('quit_app', () => {
-    log.info("Received 'quit_app' signal. Quitting application.");
-    app.quit(); // Quits the entire Electron application
+ipcMain.on('quit_app', async (event) => {
+    log.info("Received 'quit_app' signal. Showing quit confirmation dialog.");
+    const options = {
+        type: 'question',
+        buttons: ['OK', 'Cancel'],
+        defaultId: 0, // 'OK' button is default
+        title: 'WA BOMB', // This will be the title of your popup
+        message: 'Are you sure you want to quit the application?',
+        icon: path.join(__dirname, 'build', 'icon.ico') // Use your app icon here
+    };
+
+    const response = await dialog.showMessageBox(mainWindow, options);
+
+    if (response.response === 0) { // If 'OK' is clicked
+        app.quit();
+    }
 });
 
 ipcMain.on('logout-and-relaunch', async (event) => {
@@ -262,6 +275,7 @@ function createWindow() {
             contextIsolation: true,
         },
         autoHideMenuBar: true,
+        icon: path.join(__dirname, 'build', 'icon.ico') // Set your application icon for the window
     });
 
     const frontendPath = path.join(__dirname, "frontend", "dist", "index.html");

@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Computer, Fingerprint, Key, CheckCircle, XCircle, Info } from 'lucide-react';
-// No need to import Header here unless it's explicitly rendered within SystemActivation,
-// which it isn't in the provided snippet.
-// import Header from '../components/Header';
 import toast from 'react-hot-toast'; // Import toast for notifications
 
 const SystemActivation = ({ onActivationSuccess }) => {
-    // State variables to store system information, activation key, and messages
     const [motherboardSerial, setMotherboardSerial] = useState('Loading...');
     const [processorId, setProcessorId] = useState('Loading...');
     const [activationKey, setActivationKey] = useState('');
@@ -39,7 +35,6 @@ const SystemActivation = ({ onActivationSuccess }) => {
                 setIsLoadingSystemInfo(false);
             }
 
-            // Check Activation Status
             try {
                 const response = await fetch(`${API_BASE_URL}/check-activation`);
                 const data = await response.json();
@@ -52,12 +47,12 @@ const SystemActivation = ({ onActivationSuccess }) => {
                     }
                 } else {
                     setIsActivated(false);
-                    setMessage('System is not activated. Please enter your key.');
+                    setMessage(data.message || 'System is not activated. Please enter your key.');
                 }
             } catch (error) {
                 console.error('Error checking initial activation status:', error);
                 setMessage('Failed to check activation status. Backend unreachable?');
-                setIsActivated(false); // Ensure it's false on error
+                setIsActivated(false);
                 toast.error('Failed to check initial activation status.');
             } finally {
                 setIsLoadingActivationStatus(false);
@@ -116,7 +111,25 @@ const SystemActivation = ({ onActivationSuccess }) => {
                 }
                 setActivationKey('');
             } else {
-                const errorMessage = data.detail || data.message || `HTTP error! status: ${response.status}`;
+                // Handle non-200 OK responses (HTTPExceptions from FastAPI)
+                let errorMessage = 'An unknown error occurred during activation.';
+
+                // Check if 'detail' is an object and contains a 'message' key (as per your backend's HTTPException structure)
+                if (data.detail && typeof data.detail === 'object' && data.detail.message) {
+                    errorMessage = data.detail.message;
+                }
+                // Handle cases where 'detail' might be a string (less likely with your current backend setup for custom errors)
+                else if (typeof data.detail === 'string') {
+                    errorMessage = data.detail;
+                }
+                // Fallback to a generic message if 'detail' is not as expected
+                else if (data.message) { // Sometimes a top-level message might exist for non-FastAPI errors
+                    errorMessage = data.message;
+                }
+                 else {
+                    errorMessage = `HTTP error! Status: ${response.status}. Please check backend logs.`;
+                }
+                
                 setMessage(`Activation failed: ${errorMessage}`);
                 setIsActivated(false);
                 toast.error(`Activation failed: ${errorMessage}`);
@@ -130,6 +143,7 @@ const SystemActivation = ({ onActivationSuccess }) => {
         }
     };
 
+    // Determine overall loading state for the disabled prop
     const overallLoading = isLoadingSystemInfo || isLoadingActivationStatus;
 
     return (

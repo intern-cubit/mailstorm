@@ -7,6 +7,7 @@ import subprocess
 import hashlib
 import asyncio
 import sys # Import sys for sys.exit()
+import requests
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,6 +25,8 @@ logger = logging.getLogger(__name__)
 # --- Global Shutdown Event ---
 shutdown_event = asyncio.Event()
 SHUTDOWN_GRACE_PERIOD = 5 # seconds to wait for graceful shutdown before explicit exit
+
+ACTIVATION_API_URL = "https://api-keygen.obzentechnolabs.com/api/sadmin/check-activation"
 
 # --- FastAPI Lifespan Context Manager ---
 @asynccontextmanager
@@ -195,10 +198,65 @@ async def get_system_info_endpoint():
 async def activate_system_endpoint(request: ActivationRequest):
     logger.info(f"Activation request received for Motherboard: '{request.motherboardSerial}', Processor: '{request.processorId}'")
 
-    generated_key = generate_activation_key(request.processorId, request.motherboardSerial)
-    logger.info(f"Generated Activation Key: {generated_key}")
+    appName = "Email Storm" 
+    api_payload = {
+        "processorId": request.processorId,
+        "motherboardSerial": request.motherboardSerial,
+        "appName": appName
+    }
 
-    if generated_key == request.activationKey.upper():
+    try:
+        logger.info(f"Pre-checking activation status with API: {ACTIVATION_API_URL}")
+        response = requests.post(ACTIVATION_API_URL, json=api_payload)
+        response.raise_for_status() 
+        api_response_data = response.json()
+        logger.info(f"API Pre-check Response: {api_response_data}")
+
+        api_activation_status = api_response_data.get("activationStatus")
+        api_success = api_response_data.get("success", False)
+
+        if not api_success or api_activation_status != "active":
+            message = api_response_data.get("activationStatus", "Please activate your device on the website first.")
+            if api_activation_status == "inactive":
+                message = "Your device license has expired. Please renew it on the website."
+            elif api_activation_status == "Device not found":
+                 message = "Device not registered. Please register and activate it on the website."
+
+            logger.warning(f"Activation pre-check failed. Server status: {api_activation_status}. Message: {message}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, # Forbidden
+                detail={"success": False, "message": message}
+            )
+
+    except requests.exceptions.HTTPError as http_err:
+        logger.error(f"HTTP error during API pre-check: {http_err} - {response.text}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, 
+            detail={"success": False, "message": f"Failed to connect to activation server for pre-check: {http_err}"}
+        )
+    except requests.exceptions.ConnectionError as conn_err:
+        logger.error(f"Connection error during API pre-check: {conn_err}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"success": False, "message": "Could not connect to activation server for pre-check. Please check your internet connection."}
+        )
+    except requests.exceptions.Timeout as timeout_err:
+        logger.error(f"Timeout error during API pre-check: {timeout_err}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"success": False, "message": "Activation server took too long to respond during pre-check."}
+        )
+    except Exception as e:
+        logger.error(f"An unexpected error occurred during API pre-check: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"success": False, "message": f"An unexpected error occurred during activation pre-check: {e}"}
+        )
+    
+    generated_key = generate_activation_key(request.processorId, request.motherboardSerial)
+    logger.info(f"Generated Activation Key locally: {generated_key}")
+
+    if generated_key == request.activationKey.strip().upper():
         try:
             os.makedirs(os.path.dirname(ACTIVATION_FILE), exist_ok=True)
             with open(ACTIVATION_FILE, "w") as f:
@@ -207,76 +265,257 @@ async def activate_system_endpoint(request: ActivationRequest):
             return {"success": True, "message": "Activation successful!"}
         except IOError as e:
             logger.error(f"IOError saving activation file {ACTIVATION_FILE}: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to save activation data due to file system error: {e}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail={"success": False, "message": f"Failed to save activation data due to file system error: {e}"})
         except Exception as e:
             logger.error(f"Unexpected error saving activation file {ACTIVATION_FILE}: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=f"An unexpected error occurred while saving activation data: {e}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail={"success": False, "message": f"An unexpected error occurred while saving activation data: {e}"})
     else:
-        logger.warning(f"Activation failed: Provided key '{request.activationKey}' does not match generated key '{generated_key}'.")
-        return {"success": False, "message": "Activation failed: Invalid key."}
-
-@app.get("/check-activation") 
+        logger.warning(f"Local activation failed: Provided key '{request.activationKey}' does not match generated key '{generated_key}'.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"success": False, "message": "Activation failed: Invalid key provided by client."}
+        )
+    
+@app.get("/check-activation")
 async def check_activation_endpoint():
     motherboard_serial = get_motherboard_serial()
     processor_id = get_processor_id()
+    appName = "Email Storm"
+
+    # Initialize variables for the response
+    api_device_status = "unknown" # Default for API status
+    api_message = "Could not verify activation status with server." # Default message from API
+    local_key_status = False # Default for local key check
+    local_key_message = "Local activation file not found or invalid." # Default for local key message
+    is_activated_overall = False # Overall activation status, default to False
 
     if "Error" in motherboard_serial or "Error" in processor_id:
-        error_message = f"Failed to retrieve system information for activation check. Motherboard: {motherboard_serial}, Processor: {processor_id}"
+        error_message = (
+            f"Failed to retrieve system information for activation check. "
+            f"Motherboard: {motherboard_serial}, Processor: {processor_id}"
+        )
         logger.error(error_message)
-        # Attempt to remove invalid activation file if system info fails
         if os.path.exists(ACTIVATION_FILE):
             try:
                 os.remove(ACTIVATION_FILE)
-                logger.info(f"Deleted potentially invalid activation file {ACTIVATION_FILE} due to system info error.")
+                logger.info(f"Deleted local activation file due to system info error: {ACTIVATION_FILE}")
             except OSError as e:
-                logger.error(f"Error deleting activation file {ACTIVATION_FILE} during cleanup: {e}")
-        return {"isActivated": False, "message": error_message}
+                logger.error(f"Error deleting activation file {ACTIVATION_FILE} during system info cleanup: {e}")
+        
+        return {
+            "isActivated": is_activated_overall, # False
+            "apiStatus": api_device_status, # "unknown"
+            "apiMessage": error_message,
+            "localKeyStatus": False,
+            "localKeyMessage": "System information could not be retrieved."
+        }
 
-    generated_key = generate_activation_key(processor_id, motherboard_serial)
-    logger.info(f"Check Activation (Detail): Generated Key: {generated_key}")
+    payload = {
+        "processorId": processor_id,
+        "motherboardSerial": motherboard_serial,
+        "appName": appName
+    }
 
-    is_activated = False
-    stored_key = None
     try:
-        if os.path.exists(ACTIVATION_FILE):
-            try:
-                with open(ACTIVATION_FILE, "r") as f:
-                    stored_key = f.read().strip()
-                logger.info(f"Check Activation (Detail): Stored Key: {stored_key}")
+        logger.info(f"Sending activation check request to: {ACTIVATION_API_URL} with payload: {payload}")
+        response = requests.post(ACTIVATION_API_URL, json=payload, timeout=10) # Added timeout
 
-                if generated_key == stored_key:
-                    is_activated = True
-                    logger.info("Check Activation (Detail): System is activated.")
-                else:
-                    logger.warning("Check Activation (Detail): Generated key does not match stored key. Deleting activation file.")
-                    try:
-                        os.remove(ACTIVATION_FILE)
-                        logger.info(f"Deleted activation file {ACTIVATION_FILE} due to key mismatch.")
-                    except OSError as e:
-                        logger.error(f"Error deleting activation file {ACTIVATION_FILE} during mismatch: {e}")
-            except IOError as e:
-                logger.error(f"IOError reading activation file {ACTIVATION_FILE}: {e}")
+        api_response_data = {}
+        try:
+            api_response_data = response.json()
+        except requests.exceptions.JSONDecodeError:
+            logger.warning(f"API response not JSON for status {response.status_code}: {response.text}")
+            api_message = f"Invalid response format from activation server (Status: {response.status_code})."
+
+        logger.info(f"API Response (Status: {response.status_code}): {api_response_data}")
+
+        # Extract API status and message
+        api_device_status = api_response_data.get("activationStatus", "unknown")
+        # Prioritize 'message' if it exists, otherwise use activationStatus or default
+        api_message = api_response_data.get("message", api_response_data.get("activationStatus", api_message))
+
+
+        # --- Start API Response Handling (your specific logic) ---
+
+        # If API indicates an error status (4xx, 5xx)
+        if response.status_code >= 400:
+            logger.warning(f"External API reported error status {response.status_code}: {api_message}")
+            if os.path.exists(ACTIVATION_FILE):
+                try:
+                    os.remove(ACTIVATION_FILE)
+                    logger.info(f"Local activation file {ACTIVATION_FILE} deleted due to external API error.")
+                except OSError as e:
+                    logger.error(f"Error deleting activation file {ACTIVATION_FILE} during external error cleanup: {e}")
+            
+            is_activated_overall = False # API error means not activated
+            local_key_status = False # Local key cannot be validated against a failing API
+            local_key_message = "API validation failed (server error), local key status is not relevant."
+            
+            return {
+                "isActivated": is_activated_overall,
+                "apiStatus": api_device_status,
+                "apiMessage": api_message,
+                "localKeyStatus": local_key_status,
+                "localKeyMessage": local_key_message
+            }
+        
+        # If API response is 2xx, but "success" is false or "activationStatus" is not "active"
+        is_activated_from_api = api_response_data.get("success", False) and api_device_status == "active"
+
+        if is_activated_from_api:
+            # API says active, now check local key
+            generated_key = generate_activation_key(processor_id, motherboard_serial)
+            stored_key = None
+
+            if os.path.exists(ACTIVATION_FILE):
+                try:
+                    with open(ACTIVATION_FILE, "r") as f:
+                        stored_key = f.read().strip()
+                except IOError as e:
+                    logger.error(f"IOError reading activation file {ACTIVATION_FILE}: {e}")
+                    # If file is unreadable, treat as not matching, and delete it.
+                    if os.path.exists(ACTIVATION_FILE):
+                        try:
+                            os.remove(ACTIVATION_FILE)
+                            logger.info(f"Deleted unreadable activation file: {ACTIVATION_FILE}")
+                        except OSError as e_del:
+                            logger.error(f"Error deleting unreadable activation file {ACTIVATION_FILE}: {e_del}")
+                    
+                    is_activated_overall = False # Local file unreadable, so not fully activated
+                    local_key_status = False
+                    local_key_message = "Local activation file corrupted or unreadable. Please reactivate."
+
+                    return { # Return immediately based on unreadable file
+                        "isActivated": is_activated_overall,
+                        "apiStatus": api_device_status, # still "active" from API
+                        "apiMessage": api_message,
+                        "localKeyStatus": local_key_status,
+                        "localKeyMessage": local_key_message
+                    }
+
+            # Check if generated key matches stored key (if stored_key is not None)
+            if generated_key == stored_key:
+                logger.info("Local activation file matches API status. System is fully activated.")
+                is_activated_overall = True # Both API and local key match
+                local_key_status = True
+                local_key_message = "Local activation key matches."
+            else:
+                # File exists but doesn't match, or file didn't exist (stored_key is None)
+                logger.warning("Local activation key mismatch or not found, despite API reporting active.")
+                is_activated_overall = False # API says active, but local doesn't match, so not fully activated
+                local_key_status = False
+                local_key_message = "Local activation key mismatch or not found. Please reactivate."
+                
+                # Delete the local file if it exists but is incorrect/missing
                 if os.path.exists(ACTIVATION_FILE):
                     try:
                         os.remove(ACTIVATION_FILE)
-                        logger.error(f"Deleted unreadable activation file {ACTIVATION_FILE}.")
-                    except OSError as e_del:
-                        logger.error(f"Error deleting unreadable activation file {ACTIVATION_FILE}: {e_del}")
-                is_activated = False
-        else:
-            logger.info("Check Activation (Detail): Activation file not found.")
+                        logger.info(f"Deleted mismatched local activation file: {ACTIVATION_FILE}")
+                    except OSError as e:
+                        logger.error(f"Error deleting mismatched activation file {ACTIVATION_FILE}: {e}")
+            
+            return {
+                "isActivated": is_activated_overall,
+                "apiStatus": api_device_status, # Still "active" from API
+                "apiMessage": api_message,
+                "localKeyStatus": local_key_status,
+                "localKeyMessage": local_key_message
+            }
 
-    except Exception as e:
-        logger.error(f"Unhandled error during activation check (detail): {e}", exc_info=True)
+        else: # External API returned 200 OK, but not 'active' (e.g., inactive, Device not found)
+            logger.info(f"API reported activation status: {api_device_status}. Device is not active from API perspective.")
+            if os.path.exists(ACTIVATION_FILE):
+                try:
+                    os.remove(ACTIVATION_FILE)
+                    logger.info(f"Local activation file {ACTIVATION_FILE} deleted successfully as API indicates inactive status.")
+                except OSError as e:
+                    logger.error(f"Error deleting activation file {ACTIVATION_FILE}: {e}")
+
+            # Update api_message based on the actual status from API
+            if api_device_status == "inactive":
+                api_message = "Device license has expired. Please renew it on the website."
+            elif api_device_status == "Device not found":
+                api_message = "Device not registered. Please register and activate it on the website."
+            elif not api_response_data.get("success", False): # Explicitly check for success: false
+                api_message = api_response_data.get("message", "System is not activated based on API response.")
+            
+            is_activated_overall = False # API says not active
+            local_key_status = False # Local key is irrelevant/should be removed
+
+            return {
+                "isActivated": is_activated_overall,
+                "apiStatus": api_device_status,
+                "apiMessage": api_message,
+                "localKeyStatus": local_key_status,
+                "localKeyMessage": "Local activation file removed as API indicates inactive status."
+            }
+
+    except requests.exceptions.ConnectionError as conn_err:
+        logger.error(f"Connection error occurred: {conn_err}")
         if os.path.exists(ACTIVATION_FILE):
             try:
                 os.remove(ACTIVATION_FILE)
-                logger.error(f"Deleted activation file {ACTIVATION_FILE} due to error during check.")
-            except OSError as e_del:
-                logger.error(f"Error deleting activation file {ACTIVATION_FILE} due to error during check: {e_del}")
-        is_activated = False
-
-    return {"isActivated": is_activated, "message": "System is activated." if is_activated else "System is not activated."}
+                logger.info(f"Local activation file {ACTIVATION_FILE} deleted due to connection error.")
+            except OSError as e:
+                logger.error(f"Error deleting activation file {ACTIVATION_FILE} during connection error cleanup: {e}")
+        
+        is_activated_overall = False
+        api_device_status = "error"
+        api_message = "Could not connect to activation server. Please check your internet connection."
+        local_key_status = False
+        local_key_message = "Connection to activation server failed."
+        
+        return {
+            "isActivated": is_activated_overall,
+            "apiStatus": api_device_status,
+            "apiMessage": api_message,
+            "localKeyStatus": local_key_status,
+            "localKeyMessage": local_key_message
+        }
+    except requests.exceptions.Timeout as timeout_err:
+        logger.error(f"Timeout error occurred: {timeout_err}")
+        if os.path.exists(ACTIVATION_FILE):
+            try:
+                os.remove(ACTIVATION_FILE)
+                logger.info(f"Local activation file {ACTIVATION_FILE} deleted due to timeout error.")
+            except OSError as e:
+                logger.error(f"Error deleting activation file {ACTIVATION_FILE} during timeout error cleanup: {e}")
+        
+        is_activated_overall = False
+        api_device_status = "error"
+        api_message = "Activation server took too long to respond."
+        local_key_status = False
+        local_key_message = "Connection to activation server timed out."
+        
+        return {
+            "isActivated": is_activated_overall,
+            "apiStatus": api_device_status,
+            "apiMessage": api_message,
+            "localKeyStatus": local_key_status,
+            "localKeyMessage": local_key_message
+        }
+    except Exception as e:
+        logger.error(f"An unexpected error occurred during API call: {e}", exc_info=True)
+        if os.path.exists(ACTIVATION_FILE):
+            try:
+                os.remove(ACTIVATION_FILE)
+                logger.info(f"Local activation file {ACTIVATION_FILE} deleted due to unexpected error.")
+            except OSError as e:
+                logger.error(f"Error deleting activation file {ACTIVATION_FILE} during unexpected error cleanup: {e}")
+        
+        is_activated_overall = False
+        api_device_status = "error"
+        api_message = f"An unexpected error occurred: {e}"
+        local_key_status = False
+        local_key_message = "An unexpected error occurred during local key check."
+        
+        return {
+            "isActivated": is_activated_overall,
+            "apiStatus": api_device_status,
+            "apiMessage": api_message,
+            "localKeyStatus": local_key_status,
+            "localKeyMessage": local_key_message
+        }
 
 @app.post("/logout")
 async def logout_endpoint():
