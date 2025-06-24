@@ -23,7 +23,7 @@ export default function App() {
                 }
                 const data = await response.json();
                 console.log(data)
-                setIsActivated(data.isActivated);
+                setIsActivated(data.deviceActivation);
                 console.log("Activation check result:", data.message);
             } catch (error) {
                 console.error('Error checking activation status:', error);

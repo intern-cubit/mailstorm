@@ -125,7 +125,7 @@ ipcMain.on('quit_app', async (event) => {
         type: 'question',
         buttons: ['OK', 'Cancel'],
         defaultId: 0, // 'OK' button is default
-        title: 'WA BOMB', // This will be the title of your popup
+        title: 'Mail Storm', // This will be the title of your popup
         message: 'Are you sure you want to quit the application?',
         icon: path.join(__dirname, 'build', 'icon.ico') // Use your app icon here
     };

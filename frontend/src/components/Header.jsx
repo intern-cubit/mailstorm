@@ -1,39 +1,11 @@
 import React, { useState, useEffect } from 'react'; // Import useEffect
-import { Moon, Sun, LogOut, CheckCircle, XCircle, RefreshCcw, Power } from 'lucide-react';
+import { Moon, Sun, CheckCircle, XCircle, RefreshCcw, Power } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 const Header = () => {
     const { isDark, toggleTheme } = useTheme();
     const [activationStatus, setActivationStatus] = useState(null);
     const [loadingStatus, setLoadingStatus] = useState(false);
-
-    const handleLogout = async () => {
-        try {
-            const response = await fetch('http://localhost:8000/logout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (response.ok) {
-                console.log('Logged out successfully!');
-                alert('You have been logged out. The application will now restart.');
-                // Trigger a full app relaunch through the main process after logout
-                if (window.electronAPI && window.electronAPI.reloadApp) {
-                    window.electronAPI.reloadApp(); // Quits and triggers relaunch via main.js 'will-quit' handler if set up for it
-                } else {
-                    window.location.reload();
-                }
-            } else {
-                console.error('Logout failed:', response.statusText);
-                alert('Logout failed. Please try again.');
-            }
-        } catch (error) {
-            console.error('Error during logout:', error);
-            alert('An error occurred during logout.');
-        }
-    };
 
     const checkActivationStatus = async () => {
         setLoadingStatus(true);
@@ -43,8 +15,8 @@ const Header = () => {
             const data = await response.json();
 
             if (response.ok) {
-                console.log('Activation status:', data.isActivated);
-                setActivationStatus(data.apiStatus);
+                console.log('Activation status:', data.deviceStatus);
+                setActivationStatus(data.activationStatus);
             } else {
                 console.error('Failed to fetch activation status:', data.message || response.statusText);
                 setActivationStatus('error');
@@ -57,12 +29,10 @@ const Header = () => {
         }
     };
 
-    // Use useEffect to call checkActivationStatus on component mount
     useEffect(() => {
         checkActivationStatus();
-    }, []); // Empty dependency array ensures it runs only once on mount
+    }, []); 
 
-    // New handler for Reload App button
     const handleReloadApp = () => {
         if (window.electronAPI && window.electronAPI.reloadApp) {
             window.electronAPI.reloadApp();
@@ -72,16 +42,12 @@ const Header = () => {
         }
     };
 
-    // New handler for Quit App button
     const handleQuitApp = () => {
-        // Send a message to the main process to show the native dialog
         if (window.electronAPI && window.electronAPI.quitApp) {
             window.electronAPI.quitApp();
         } else {
-            // Fallback for browser or if Electron API not available
             if (window.confirm("Are you sure you want to quit the application?")) {
                  console.warn("Electron API for quitting not available. Using browser confirm.");
-                 // In a browser, this would just close the tab if allowed. In Electron, it won't quit the app directly.
             }
         }
     };
@@ -89,11 +55,11 @@ const Header = () => {
     return (
         <header className="flex justify-between items-center py-4 px-6 bg-white/70 backdrop-blur-sm border border-gray-200 dark:bg-[rgba(30,30,30,0.5)] dark:backdrop-blur-md dark:border dark:border-gray-800 shadow-sm">
             <div className="flex items-center">
-                <h1 className="text-3xl font-extrabold text-[#25D366] mr-2">
-                    Mail
+                <h1 className="text-3xl font-extrabold text-blue-700 mr-2">
+                    Email
                 </h1>
                 <span className="text-3xl font-extrabold text-gray-900 dark:text-white flex items-center">
-                    Strom
+                    Storm
                 </span>
                 <p className="hidden md:block ml-4 text-gray-600 dark:text-gray-400 text-sm">
                     Seamlessly manage your Email campaigns.
@@ -141,16 +107,6 @@ const Header = () => {
                 >
                     <Power className="text-purple-600 mr-1" size={20} /> {/* Using Power icon for Quit */}
                     Quit
-                </button>
-
-                {/* Logout Button */}
-                <button
-                    onClick={handleLogout}
-                    className="flex items-center p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-300 shadow-md"
-                    aria-label="Logout"
-                >
-                    <LogOut className="text-red-600 mr-1" size={20} />
-                    Logout
                 </button>
 
                 {/* Theme Toggle */}
