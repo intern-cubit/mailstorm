@@ -54,6 +54,32 @@ const Header = () => {
         }
     };
 
+    const handleLogout = async () => {
+        try {
+            const response = await fetch('http://localhost:8000/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                if (window.electronAPI && window.electronAPI.showLogoutDialog) {
+                    window.electronAPI.showLogoutDialog();
+                } else {
+                    alert('You have been logged out. The application will now restart.');
+                    window.location.reload();
+                }
+            } else {
+                console.error('Logout failed:', response.statusText);
+                alert('Logout failed. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error during logout:', error);
+            alert('An error occurred during logout.');
+        }
+    };
+
     // Initial fetch on component mount
     useEffect(() => {
         checkActivationStatus();
@@ -180,6 +206,15 @@ const Header = () => {
                 >
                     <Power className="text-purple-600 mr-1" size={20} />
                     Quit
+                </button>
+
+                <button
+                    onClick={handleLogout}
+                    className="flex items-center p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-300 shadow-md"
+                    aria-label="Logout"
+                >
+                    <LogOut className="text-red-600 mr-1" size={20} />
+                    Logout
                 </button>
 
                 <button

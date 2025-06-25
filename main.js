@@ -137,6 +137,38 @@ ipcMain.on('quit_app', async (event) => {
     }
 });
 
+ipcMain.on("show-logout-dialog", async (event) => {
+    log.info(
+        "Received 'show-logout-dialog' signal. Showing logout confirmation dialog."
+    );
+    const options = {
+        type: "info", 
+        buttons: ["OK"],
+        defaultId: 0,
+        title: "Mail Storm",
+        message: "You have been logged out. The application will now restart.",
+        icon: path.join(__dirname, "build", "icon.ico"),
+    };
+
+    await dialog.showMessageBox(mainWindow, options);
+
+    log.info("Initiating logout and relaunch.");
+    try {
+        if (session && session.defaultSession) {
+            await session.defaultSession.clearStorageData(); 
+            await session.defaultSession.clearCache(); 
+            log.info("Electron session data and cache cleared.");
+        } else {
+            log.warn("Electron session is not available for clearing data.");
+        }
+    } catch (error) {
+        log.error("Failed to clear session data:", error);
+    }
+
+    app.relaunch(); 
+    app.quit(); 
+});
+
 ipcMain.on('logout-and-relaunch', async (event) => {
     log.info("Received 'logout-and-relaunch' signal. Clearing data and relaunching.");
     // Optional: Clear session data before relaunching for a cleaner state

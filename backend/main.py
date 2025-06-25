@@ -249,7 +249,21 @@ async def check_activation_endpoint():
             "success": False,
             "systemId": systemId
         }
-    
+
+@app.post("/logout")
+async def logout_endpoint():
+    if os.path.exists(EMAIL_CONFIG_FILE):
+        try:
+            os.remove(EMAIL_CONFIG_FILE)
+            global email_configs_data
+            email_configs_data = []
+            return {"message": f"Successfully logged out and '{EMAIL_CONFIG_FILE}' deleted."}
+        except OSError as e:
+            raise HTTPException(status_code=500, detail=f"Error deleting file '{EMAIL_CONFIG_FILE}': {e.strerror}")
+    else:
+        return {"message": "Logged out. No email configuration file to delete."}
+
+  
 @app.post("/preview-csv")
 async def preview_csv_endpoint(
     csv_file: UploadFile = File(..., description="CSV file to preview")

@@ -10,5 +10,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     downloadUpdate: () => ipcRenderer.send('download_update'),
     // --- NEW: Expose functions for app control ---
     reloadApp: () => ipcRenderer.send('reload_app'), // Sends message to reload current window
-    quitApp: () => ipcRenderer.send('quit_app')     // Sends message to quit the application
+    quitApp: () => ipcRenderer.send('quit_app'),   // Sends message to quit the application
+    showLogoutDialog: () => ipcRenderer.send('show-logout-dialog'),
 });
