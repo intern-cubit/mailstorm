@@ -124,10 +124,10 @@ ipcMain.on('quit_app', async (event) => {
     const options = {
         type: 'question',
         buttons: ['OK', 'Cancel'],
-        defaultId: 0, // 'OK' button is default
-        title: 'Mail Storm', // This will be the title of your popup
+        defaultId: 0, 
+        title: 'Mail Storm', 
         message: 'Are you sure you want to quit the application?',
-        icon: path.join(__dirname, 'build', 'icon.ico') // Use your app icon here
+        icon: path.join(__dirname, 'build', 'icon.ico')
     };
 
     const response = await dialog.showMessageBox(mainWindow, options);

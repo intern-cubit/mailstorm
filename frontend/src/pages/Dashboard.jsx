@@ -1,14 +1,14 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { MessageSquare, Send, FileText, Image, Users, Zap, CheckCircle, X, Info, Loader2, Mail, AlertCircle, ChevronLeft, ChevronRight, Settings, Edit3, Search } from 'lucide-react';
 
-import Header from '../components/Header';
+import Header from '../components/Header'; // Assuming Header is used elsewhere or will be added
 import StatsCard from '../components/StatsCard';
 import FileUpload from '../components/FileUpload';
 import CSVPreview from '../components/CSVPreview';
 import EmailContentEditor from '../components/EmailContentEditor';
 import EmailConfig from '../components/EmailConfig';
-import VariableButtons from '../components/VariableButtons';
-import UpdateStatus from '../components/UpdateStatus';
+import VariableButtons from '../components/VariableButtons'; // This component appears to be used implicitly in EmailContentEditor based on props
+import UpdateStatus from '../components/UpdateStatus'; // This component appears to be a placeholder or for global status
 
 function Dashboard() {
     const [currentStep, setCurrentStep] = useState(1);
@@ -82,7 +82,7 @@ function Dashboard() {
 
     const handleCsvUpload = useCallback(async (e) => {
         const file = e.target.files[0];
-        e.target.value = null;
+        e.target.value = null; // Clear the input so the same file can be selected again
 
         setError("");
         setStatus("");
@@ -150,7 +150,7 @@ function Dashboard() {
     const handleMediaUpload = useCallback((e) => {
         const file = e.target.files[0];
         setMediaFile(file || null);
-        e.target.value = null;
+        e.target.value = null; // Clear the input
     }, []);
 
     const insertVariableIntoMessage = useCallback((variable) => {
@@ -161,6 +161,7 @@ function Dashboard() {
             const end = textarea.selectionEnd;
             const newText = message.substring(0, start) + newVar + message.substring(end);
             setMessage(newText);
+            // Manually set cursor position after insertion
             setTimeout(() => {
                 textarea.selectionStart = textarea.selectionEnd = start + newVar.length;
                 textarea.focus();
@@ -178,6 +179,7 @@ function Dashboard() {
             const end = input.selectionEnd;
             const newText = subject.substring(0, start) + newVar + subject.substring(end);
             setSubject(newText);
+            // Manually set cursor position after insertion
             setTimeout(() => {
                 input.selectionStart = input.selectionEnd = start + newVar.length;
                 input.focus();
@@ -235,6 +237,7 @@ function Dashboard() {
             return;
         }
 
+        // Determine if content is HTML by checking the isHtmlEmail state or by looking for HTML tags
         const actualHtmlContent = isHtmlEmail || /<[a-z][\s\S]*>/i.test(message);
 
         const formData = new FormData();
@@ -296,7 +299,8 @@ function Dashboard() {
             case 1:
                 return csvFile && csvData && csvColumns.some(col => col.toLowerCase() === 'email');
             case 2:
-                return emailConfigs.every(config =>
+                // Ensure there's at least one config and all its fields are filled
+                return emailConfigs.length > 0 && emailConfigs.every(config =>
                     config.senderEmail &&
                     config.senderPassword &&
                     config.smtpServer &&
@@ -310,22 +314,41 @@ function Dashboard() {
     };
 
     const nextStep = () => {
-        if (currentStep < 3 && canProceedToNextStep()) {
+        if (currentStep < steps.length && canProceedToNextStep()) {
             setCurrentStep(currentStep + 1);
-            setError("");
+            setError(""); // Clear error when moving to next step
+        } else if (!canProceedToNextStep()) {
+            // Set a specific error if conditions aren't met for the current step
+            if (currentStep === 1) {
+                setError("Please upload a valid CSV file with an 'email' column.");
+            } else if (currentStep === 2) {
+                setError("Please complete all sender email configuration details.");
+            } else if (currentStep === 3) {
+                setError("Please ensure both subject and message are filled.");
+            }
         }
     };
 
     const prevStep = () => {
         if (currentStep > 1) {
             setCurrentStep(currentStep - 1);
-            setError("");
+            setError(""); // Clear error when moving back
         }
     };
 
     const goToStep = (stepNumber) => {
-        setCurrentStep(stepNumber);
-        setError("");
+        // Allow going to any previous step, but only to next if canProceedToNextStep is true
+        if (stepNumber < currentStep) {
+            setCurrentStep(stepNumber);
+            setError("");
+        } else if (stepNumber === currentStep + 1 && canProceedToNextStep()) {
+            setCurrentStep(stepNumber);
+            setError("");
+        } else if (stepNumber === currentStep) {
+            // Allow clicking current step to reset errors if user fixes something
+            setError("");
+        }
+        // Disallow jumping forward if not ready
     };
 
     // NEW: Function to filter and search emails
@@ -371,6 +394,7 @@ function Dashboard() {
                                     file={csvFile}
                                     acceptedTypes=".csv"
                                     onFileUpload={handleCsvUpload}
+                                    isLoading={isLoading}
                                 />
 
                                 <FileUpload
@@ -380,6 +404,7 @@ function Dashboard() {
                                     file={mediaFile}
                                     acceptedTypes="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
                                     onFileUpload={handleMediaUpload}
+                                    isLoading={isLoading} // Optionally disable during upload
                                 />
 
                                 <div className="bg-blue-50/70 backdrop-blur-sm border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 rounded-xl p-6">
@@ -476,7 +501,7 @@ function Dashboard() {
                                     <p className="font-medium text-gray-900 dark:text-white truncate">{subject || "No subject"}</p>
                                 </div>
                                 <div>
-                                    <p className="text-gray-600 dark:text-gray-400">Sender:</p>
+                                    <p className="text-gray-600 dark:text-gray-400">Sender Configurations:</p>
                                     <p className="font-medium text-gray-900 dark:text-white">
                                         {emailConfigs.length > 0
                                             ? `${emailConfigs.length} configuration(s) added`
@@ -484,18 +509,18 @@ function Dashboard() {
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-gray-600 dark:text-gray-400">Variables:</p>
-                                    <p className="font-medium text-gray-900 dark:text-white">{selectedVariables.length} variables used</p>
+                                    <p className="text-gray-600 dark:text-gray-400">Variables Used:</p>
+                                    <p className="font-medium text-gray-900 dark:text-white">{selectedVariables.length} variables</p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Stats - COLOR CHANGE HERE */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                            <StatsCard icon={Users} label="Emails" value={totalRows || 0} color="bg-blue-600" />
-                            <StatsCard icon={MessageSquare} label="Variables" value={selectedVariables.length} color="bg-indigo-600" />
-                            <StatsCard icon={Mail} label="Successful" value={successfulSends} color="bg-green-600" /> {/* Changed to green */}
-                            <StatsCard icon={X} label="Failed" value={failedSends} color="bg-red-600" />
+                            <StatsCard icon={Users} label="Total Emails" value={totalRows || 0} color="bg-blue-600" />
+                            <StatsCard icon={MessageSquare} label="Unique Variables" value={selectedVariables.length} color="bg-indigo-600" />
+                            <StatsCard icon={Mail} label="Successful Sends" value={successfulSends} color="bg-green-600" /> {/* Changed to green */}
+                            <StatsCard icon={X} label="Failed Sends" value={failedSends} color="bg-red-600" />
                         </div>
 
                         {/* Last Campaign Results Summary - COLOR CHANGE HERE */}
@@ -515,11 +540,11 @@ function Dashboard() {
                                     </div>
                                     <div className="text-center">
                                         <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{lastCampaignResult.total}</div> {/* Blue */}
-                                        <div className="text-gray-600 dark:text-gray-400">Total Sent</div> {/* Clarified label */}
+                                        <div className="text-gray-600 dark:text-gray-400">Total Processed</div> {/* Clarified label */}
                                     </div>
                                     <div className="text-center">
                                         <div className="text-xs text-gray-500 dark:text-gray-400">{lastCampaignResult.timestamp}</div>
-                                        <div className="text-gray-600 dark:text-gray-400">Completed</div>
+                                        <div className="text-gray-600 dark:text-gray-400">Completed On</div>
                                     </div>
                                 </div>
                                 <button
@@ -594,13 +619,9 @@ function Dashboard() {
                                     {displayedEmails.length > 0 ? (
                                         <ul className="space-y-1">
                                             {displayedEmails.map((email, idx) => (
-                                                <li key={idx} className={`flex items-center ${filterStatus === 'successful' ? 'text-green-700 dark:text-green-300' : filterStatus === 'failed' ? 'text-red-700 dark:text-red-300' : 'text-gray-800 dark:text-gray-200'}`}>
-                                                    {filterStatus === 'all' && (
-                                                        <>
-                                                            {successfulEmailsList.includes(email) && <CheckCircle size={14} className="mr-2 text-green-500" />}
-                                                            {failedEmailsList.includes(email) && <X size={14} className="mr-2 text-red-500" />}
-                                                        </>
-                                                    )}
+                                                <li key={idx} className={`flex items-center ${successfulEmailsList.includes(email) ? 'text-green-700 dark:text-green-300' : failedEmailsList.includes(email) ? 'text-red-700 dark:text-red-300' : 'text-gray-800 dark:text-gray-200'}`}>
+                                                    {successfulEmailsList.includes(email) && <CheckCircle size={14} className="mr-2 text-green-500" />}
+                                                    {failedEmailsList.includes(email) && <X size={14} className="mr-2 text-red-500" />}
                                                     {email}
                                                 </li>
                                             ))}
@@ -649,7 +670,6 @@ function Dashboard() {
     return (
         <div className="min-h-screen bg-transparent">
             <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-                {/* <Header /> */}
                 <UpdateStatus />
 
                 {/* Step Progress Indicator */}

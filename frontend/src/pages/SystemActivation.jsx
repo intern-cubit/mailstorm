@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Computer, Fingerprint, Key, CheckCircle, XCircle, Info } from 'lucide-react';
-import toast from 'react-hot-toast'; 
+import { Computer, Fingerprint, Key, CheckCircle, XCircle, Info, Copy } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const SystemActivation = ({ onActivationSuccess }) => {
     const [systemId, setSystemId] = useState('Loading...');
     const [activationKey, setActivationKey] = useState('');
     const [message, setMessage] = useState('');
     const [isActivated, setIsActivated] = useState(false);
-    const [isLoadingSystemInfo, setIsLoadingSystemInfo] = useState(true); 
-    const [isLoadingActivationStatus, setIsLoadingActivationStatus] = useState(true); 
+    const [isLoadingSystemInfo, setIsLoadingSystemInfo] = useState(true);
+    const [isLoadingActivationStatus, setIsLoadingActivationStatus] = useState(true);
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-    const ACTIVATION_URL = "https://api-keygen.obzentechnolabs.com/api/sadmin/activate" //|| "http://localhost:5000/api/sadmin/activate";
+    const ACTIVATION_URL = "https://api-keygen.obzentechnolabs.com/api/sadmin/activate" //|| "http://localhost:5000/api/sadmin/activate"; //
 
     useEffect(() => {
         const fetchAllInfo = async () => {
@@ -39,7 +39,7 @@ const SystemActivation = ({ onActivationSuccess }) => {
                     setMessage('System is already activated!');
                     toast.success('System is already activated!');
                     if (onActivationSuccess) {
-                        onActivationSuccess(); 
+                        onActivationSuccess();
                     }
                 } else {
                     setIsActivated(false);
@@ -108,20 +108,20 @@ const SystemActivation = ({ onActivationSuccess }) => {
                 else if (typeof data.detail === 'string') {
                     errorMessage = data.detail;
                 }
-                else if (data.message) { 
+                else if (data.message) {
                     errorMessage = data.message;
                 }
-                 else {
+                else {
                     errorMessage = `HTTP error! Status: ${response.status}. Please check backend logs.`;
                 }
-                
+
                 setMessage(`Activation failed: ${errorMessage}`);
                 setIsActivated(false);
                 toast.error(`Activation failed: ${errorMessage}`);
-                console.error('Activation failed response:', data); 
+                console.error('Activation failed response:', data);
             }
         } catch (error) {
-            console.error('Network error during activation:', error); 
+            console.error('Network error during activation:', error);
             setMessage('Failed to activate. Please check your network connection and ensure the backend is running.');
             setIsActivated(false);
             toast.error('Failed to activate. Check network/backend.');
@@ -149,6 +149,18 @@ const SystemActivation = ({ onActivationSuccess }) => {
                                 <Fingerprint className="mr-3 text-blue-600 dark:text-blue-400" size={20} />
                                 <span className="font-medium">System ID:</span>
                                 <span className="ml-3 text-gray-600 dark:text-gray-300 break-all">{isLoadingSystemInfo ? 'Loading...' : systemId}</span>
+                                {!isLoadingSystemInfo && (
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(systemId);
+                                            toast.success('System ID copied to clipboard!');
+                                        }}
+                                        className="ml-2 text-blue-500 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-100 transition-all duration-150"
+                                        title="Copy System ID"
+                                    >
+                                        <Copy size={16} />
+                                    </button>
+                                )}
                             </div>
                         </div>
                         {overallLoading && (
@@ -170,12 +182,12 @@ const SystemActivation = ({ onActivationSuccess }) => {
                                 value={activationKey}
                                 onChange={(e) => setActivationKey(e.target.value)}
                                 className="flex-grow p-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50/70 dark:bg-[rgba(30,30,30,0.5)] dark:backdrop-blur-sm text-gray-900 dark:text-white shadow-inner text-base transition-all duration-200"
-                                disabled={overallLoading || isActivated} 
+                                disabled={overallLoading || isActivated}
                             />
                             <button
                                 onClick={handleActivate}
                                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all duration-300 ease-in-out transform hover:scale-105 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={overallLoading || isActivated} 
+                                disabled={overallLoading || isActivated}
                             >
                                 {isActivated ? <CheckCircle className="mr-2" size={20} /> : <Key className="mr-2" size={20} />}
                                 {isActivated ? 'Activated' : 'Activate'}

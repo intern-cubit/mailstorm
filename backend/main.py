@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 shutdown_event = asyncio.Event()
 SHUTDOWN_GRACE_PERIOD = 5 # seconds to wait for graceful shutdown before explicit exit
 
-ACTIVATION_API_URL = "https://api-keygen.obzentechnolabs.com/api/sadmin/check-activation" #"http://localhost:5000/api/sadmin/check-activation" 
+ACTIVATION_API_URL = "https://api-keygen.obzentechnolabs.com/api/sadmin/check-activation" #"http://localhost:5000/api/sadmin/check-activation" #
 
 # --- FastAPI Lifespan Context Manager ---
 @asynccontextmanager
@@ -202,7 +202,8 @@ async def check_activation_endpoint():
             "deviceActivation": False,
             "activationStatus": "error",
             "message": "Failed to retrieve complete system information.",
-            "success": False
+            "success": False,
+            "systemId": None,
         }
 
     systemId = generate_systemId(processor_id, motherboard_serial)
@@ -230,13 +231,14 @@ async def check_activation_endpoint():
         elif activation_status == "active":
             message = ""
         else:
-            message = "Unknown activation status. Please contact support."
+            message = "Please register the device on the website."
 
         return {
             "deviceActivation": device_activation,
             "activationStatus": activation_status,
             "message": message,
-            "success": activation_status == "active"
+            "success": activation_status == "active",
+            "systemId": systemId
         }
 
     except requests.exceptions.RequestException as e:
@@ -245,7 +247,8 @@ async def check_activation_endpoint():
             "deviceActivation": False,
             "activationStatus": "error",
             "message": f"Could not connect to activation server: {e}",
-            "success": False
+            "success": False,
+            "systemId": systemId
         }
     
 @app.post("/preview-csv")
