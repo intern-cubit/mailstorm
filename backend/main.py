@@ -84,8 +84,7 @@ except OSError as e:
     logger.critical(f"CRITICAL ERROR: Could not create application data directory {APP_DATA_PATH}: {e}")
     sys.exit(1) 
 
-ACTIVATION_FILE = os.path.join(APP_DATA_PATH, "activation.txt")
-
+EMAIL_CONFIG_FILE = os.path.join(APP_DATA_PATH, "email_configs.json")
 
 class ActivationRequest(BaseModel):
     motherboardSerial: str
@@ -297,6 +296,47 @@ async def preview_csv_endpoint(
                 shutil.rmtree(temp_dir, ignore_errors=True)
             except OSError as e:
                 logger.error(f"Error cleaning up temp directory {temp_dir}: {e}")
+
+@app.post("/save-email-configs")
+async def save_email_configs_endpoint(configs: list[EmailConfig]):
+    """
+    Saves the provided email configurations to a local JSON file.
+    """
+    try:
+        # Convert Pydantic models to dictionaries for JSON serialization
+        configs_data = [config.model_dump(by_alias=True) for config in configs]
+
+        with open(EMAIL_CONFIG_FILE, 'w') as f:
+            json.dump(configs_data, f, indent=4)
+        logger.info(f"Email configurations saved to {EMAIL_CONFIG_FILE}")
+        return JSONResponse(status_code=200, content={"message": "Email configurations saved successfully!"})
+    except Exception as e:
+        logger.error(f"Failed to save email configurations: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to save email configurations: {e}")
+
+@app.get("/load-email-configs")
+async def load_email_configs_endpoint():
+    """
+    Loads email configurations from a local JSON file.
+    """
+    if not os.path.exists(EMAIL_CONFIG_FILE):
+        logger.info("No saved email configurations found.")
+        return JSONResponse(status_code=200, content=[]) # Return empty list if file doesn't exist
+
+    try:
+        with open(EMAIL_CONFIG_FILE, 'r') as f:
+            configs_data = json.load(f)
+        logger.info(f"Email configurations loaded from {EMAIL_CONFIG_FILE}")
+        # Convert dictionaries back to Pydantic models for consistency
+        # This also validates the data against the EmailConfig schema
+        loaded_configs = [EmailConfig(**config) for config in configs_data]
+        return JSONResponse(status_code=200, content=[config.dict(by_alias=True) for config in loaded_configs])
+    except json.JSONDecodeError as e:
+        logger.error(f"Error decoding JSON from {EMAIL_CONFIG_FILE}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error reading saved email configurations: Invalid file format.")
+    except Exception as e:
+        logger.error(f"Failed to load email configurations: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to load email configurations: {e}")
 
 @app.post("/send-emails")
 async def send_emails_endpoint(

@@ -13,7 +13,7 @@ import UpdateStatus from '../components/UpdateStatus'; // This component appears
 function Dashboard() {
     const [currentStep, setCurrentStep] = useState(1);
     const [subject, setSubject] = useState("");
-    const [message, setMessage] = useState(""); // Holds either plain text or HTML string
+    const [message, setMessage] = ("");
     const [csvFile, setCsvFile] = useState(null);
     const [csvData, setCsvData] = useState(null);
     const [csvColumns, setCsvColumns] = useState([]);
@@ -21,7 +21,8 @@ function Dashboard() {
     const [mediaFile, setMediaFile] = useState(null);
     const [status, setStatus] = useState("");
     const [error, setError] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(false); // For campaign send
+    const [isSavingConfigs, setIsSavingConfigs] = useState(false); // New: For saving email configs
     const [showPreview, setShowPreview] = useState(false);
     const [selectedVariables, setSelectedVariables] = useState([]);
 
@@ -46,6 +47,89 @@ function Dashboard() {
     const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'successful', 'failed'
     const [searchTerm, setSearchTerm] = useState('');
 
+    // NEW: Toast notification state
+    const [toastMessage, setToastMessage] = useState(null); // { type: 'success' | 'error', message: '...' }
+
+    // Helper function to show toast messages
+    const showToast = useCallback((type, message) => {
+        setToastMessage({ type, message });
+        const timer = setTimeout(() => {
+            setToastMessage(null);
+        }, 5000); // Hide after 5 seconds
+        return () => clearTimeout(timer);
+    }, []);
+
+
+    // --- Backend API Integration for Email Configurations ---
+    // Load email configurations from backend on component mount
+    useEffect(() => {
+        const loadConfigs = async () => {
+            try {
+                const response = await fetch('http://localhost:8000/load-email-configs');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Failed to load email configurations from backend.');
+                }
+                const data = await response.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    setEmailConfigs(data);
+                } else {
+                    // If no configs are loaded, ensure there's at least one default
+                    setEmailConfigs([{ senderEmail: '', senderPassword: '', smtpServer: '', smtpPort: 587 }]);
+                }
+            } catch (err) {
+                console.error("Error loading email configurations:", err.message);
+                setError("Failed to load saved email configurations: " + err.message);
+                showToast('error', "Failed to load saved email configurations.");
+                // Still ensure a default config is present even if loading fails
+                setEmailConfigs([{ senderEmail: '', senderPassword: '', smtpServer: '', smtpPort: 587 }]);
+            }
+        };
+
+        loadConfigs();
+    }, [showToast]); // Include showToast in dependencies to satisfy useCallback linter, though it's stable
+
+
+    // NEW: Function to handle saving email configurations manually
+    const handleSaveEmailConfigs = async () => {
+        setError("");
+        setStatus("");
+        setIsSavingConfigs(true); // Start loading state for saving
+
+        // Basic validation before saving
+        const invalidConfigs = emailConfigs.some(config =>
+            !config.senderEmail || !config.senderPassword || !config.smtpServer || !config.smtpPort
+        );
+        if (invalidConfigs) {
+            setError("Please fill in all details for all sender email configurations before saving.");
+            showToast('error', "Please fill in all details for all sender email configurations.");
+            setIsSavingConfigs(false);
+            return;
+        }
+
+        try {
+            const response = await fetch('http://localhost:8000/save-email-configs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(emailConfigs),
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Failed to save email configurations to backend.');
+            }
+            setStatus("✅ Email configurations saved successfully!");
+            showToast('success', "Email configurations saved successfully!");
+        } catch (err) {
+            console.error("Error saving email configurations:", err.message);
+            setError("❌ Failed to save email configurations: " + err.message);
+            showToast('error', `Failed to save configurations: ${err.message}`);
+        } finally {
+            setIsSavingConfigs(false); // End loading state
+        }
+    };
+    // --- End Backend API Integration ---
 
     const steps = [
         { id: 1, title: "Upload Emails", icon: FileText, description: "Import your contact list" },
@@ -100,6 +184,7 @@ function Dashboard() {
 
         if (!file.name.toLowerCase().endsWith('.csv')) {
             setError("Please upload a CSV file (e.g., Emails.csv).");
+            showToast('error', "Please upload a CSV file.");
             setIsLoading(false);
             return;
         }
@@ -127,16 +212,20 @@ function Dashboard() {
             setShowPreview(true);
             setTotalRows(result.total_rows || 0);
             setStatus(`CSV processed successfully! ${result.total_rows} Emails found.`);
+            showToast('success', `CSV processed! ${result.total_rows} Emails found.`);
+
 
             if (result.columns.some(col => col.toLowerCase() === 'email')) {
                 const emailCol = result.columns.find(col => col.toLowerCase() === 'email');
                 setSelectedVariables(prev => (prev.includes(emailCol) ? prev : [...prev, emailCol]));
             } else {
                 setError("Your CSV file must contain an 'email' column.");
+                showToast('error', "CSV must contain an 'email' column.");
             }
 
         } catch (err) {
             setError("Error processing CSV: " + err.message);
+            showToast('error', "Error processing CSV: " + err.message);
             setCsvFile(null);
             setCsvData(null);
             setCsvColumns([]);
@@ -145,7 +234,7 @@ function Dashboard() {
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [showToast]);
 
     const handleMediaUpload = useCallback((e) => {
         const file = e.target.files[0];
@@ -202,27 +291,32 @@ function Dashboard() {
 
         if (!csvFile) {
             setError("Please upload your Contact List (CSV) first.");
+            showToast('error', "Please upload your Contact List.");
             setIsLoading(false);
             return;
         }
         if (!subject.trim()) {
             setError("Email subject cannot be empty.");
+            showToast('error', "Email subject cannot be empty.");
             setIsLoading(false);
             return;
         }
         if (!message.trim()) {
             setError("Email body cannot be empty.");
+            showToast('error', "Email body cannot be empty.");
             setIsLoading(false);
             return;
         }
         if (!csvColumns.some(col => col.toLowerCase() === 'email')) {
             setError("Your CSV file must contain an 'email' column for sending emails.");
+            showToast('error', "CSV must contain an 'email' column.");
             setIsLoading(false);
             return;
         }
         const missingVars = selectedVariables.filter(v => !csvColumns.includes(v));
         if (missingVars.length > 0) {
             setError(`You have variables in your email content/subject that do not match CSV columns: ${missingVars.join(', ')}. Please check.`);
+            showToast('error', `Missing CSV columns for variables: ${missingVars.join(', ')}.`);
             setIsLoading(false);
             return;
         }
@@ -233,6 +327,7 @@ function Dashboard() {
         );
         if (invalidConfigs) {
             setError("Please fill in all details for all sender email configurations.");
+            showToast('error', "Please fill in all sender email configuration details.");
             setIsLoading(false);
             return;
         }
@@ -267,6 +362,7 @@ function Dashboard() {
 
             const result = await response.json();
             setStatus(`✅ Campaign completed successfully! ${result.detail}`);
+            showToast('success', `Campaign completed! ${result.successful_emails.length} successful, ${result.failed_emails.length} failed.`);
             setSuccessfulSends(result.successful_emails.length);
             setFailedSends(result.failed_emails.length);
 
@@ -283,6 +379,7 @@ function Dashboard() {
 
         } catch (err) {
             setError("❌ Failed to send campaign: " + err.message);
+            showToast('error', "Failed to send campaign: " + err.message);
             setStatus("");
             setSuccessfulSends(0);
             setFailedSends(0);
@@ -321,10 +418,13 @@ function Dashboard() {
             // Set a specific error if conditions aren't met for the current step
             if (currentStep === 1) {
                 setError("Please upload a valid CSV file with an 'email' column.");
+                showToast('error', "Please upload a valid CSV file.");
             } else if (currentStep === 2) {
                 setError("Please complete all sender email configuration details.");
+                showToast('error', "Please complete all sender email configuration details.");
             } else if (currentStep === 3) {
                 setError("Please ensure both subject and message are filled.");
+                showToast('error', "Please ensure both subject and message are filled.");
             }
         }
     };
@@ -459,6 +559,27 @@ function Dashboard() {
                             emailConfigs={emailConfigs}
                             onEmailConfigsChange={setEmailConfigs}
                         />
+
+                        {/* NEW: Remember Emails Button */}
+                        <div className="mt-6 flex justify-end">
+                            <button
+                                onClick={handleSaveEmailConfigs}
+                                disabled={isSavingConfigs || emailConfigs.some(config => !config.senderEmail || !config.senderPassword || !config.smtpServer || !config.smtpPort)}
+                                className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-md flex items-center justify-center"
+                            >
+                                {isSavingConfigs ? (
+                                    <>
+                                        <Loader2 className="mr-3 animate-spin" size={20} />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Settings className="mr-3" size={20} />
+                                        Remember Emails
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 );
 
@@ -476,9 +597,9 @@ function Dashboard() {
                                 subject={subject}
                                 onSubjectChange={setSubject}
                                 message={message}
-                                onMessageChange={setMessage}
                                 isHtmlEmail={isHtmlEmail}
                                 onToggleHtml={handleToggleHtml}
+                                onMessageChange={setMessage}
                                 columns={csvColumns}
                                 onInsertVariable={insertVariableIntoMessage}
                                 onInsertSubjectVariable={insertVariableIntoSubject}
@@ -669,8 +790,49 @@ function Dashboard() {
 
     return (
         <div className="min-h-screen bg-transparent">
+            {/* Toast Notification */}
+            {toastMessage && (
+                <div
+                    className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center space-x-3 transition-opacity duration-300 ${
+                        toastMessage.type === 'success'
+                            ? 'bg-green-500 text-white'
+                            : 'bg-red-500 text-white'
+                    }`}
+                    role="alert"
+                >
+                    {toastMessage.type === 'success' ? (
+                        <CheckCircle size={20} className="flex-shrink-0" />
+                    ) : (
+                        <AlertCircle size={20} className="flex-shrink-0" />
+                    )}
+                    <span className="text-sm font-medium">{toastMessage.message}</span>
+                </div>
+            )}
+
             <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
                 <UpdateStatus />
+
+                {/* Status Messages - Kept for broader status/error, but individual actions use toast now */}
+                {(status || error) && (
+                    <div className="mb-6">
+                        <div className={`rounded-xl p-4 transition-all duration-300 ${error ? 'bg-red-50/70 dark:bg-red-900/20 border border-red-200 dark:border-red-800' :
+                            (status.startsWith("✅") ? 'bg-green-50/70 dark:bg-green-900/20 border border-green-200 dark:border-green-800' :
+                                'bg-blue-50/70 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800')
+                            }`}>
+                            <div className="flex items-center">
+                                {error ? <AlertCircle className="text-red-600 dark:text-red-400 mr-2" size={20} /> :
+                                    (status.startsWith("✅") ? <CheckCircle className="text-green-600 dark:text-green-400 mr-2" size={20} /> :
+                                        <Info className="text-blue-600 dark:text-blue-400 mr-2" size={20} />)}
+                                <p className={`font-medium ${error ? 'text-red-800 dark:text-red-200' :
+                                    (status.startsWith("✅") ? 'text-green-800 dark:text-green-200' :
+                                        'text-blue-800 dark:text-blue-200')
+                                    }`}>
+                                    {error || status}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Step Progress Indicator */}
                 <div className="mb-8">
@@ -679,12 +841,14 @@ function Dashboard() {
                             <React.Fragment key={step.id}>
                                 <button
                                     onClick={() => goToStep(step.id)}
+                                    // Disable step navigation if saving configs or loading for campaign
+                                    disabled={isSavingConfigs || isLoading}
                                     className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-300 ${currentStep === step.id
                                         ? 'bg-blue-600 border-blue-600 text-white'
                                         : currentStep > step.id
                                             ? 'bg-green-600 border-green-600 text-white'
                                             : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
-                                        }`}
+                                        } ${isSavingConfigs || isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     {currentStep > step.id ? (
                                         <CheckCircle size={20} />
@@ -709,27 +873,6 @@ function Dashboard() {
                     </div>
                 </div>
 
-                {/* Status Messages */}
-                {(status || error) && (
-                    <div className="mb-6">
-                        <div className={`rounded-xl p-4 transition-all duration-300 ${error ? 'bg-red-50/70 dark:bg-red-900/20 border border-red-200 dark:border-red-800' :
-                            (status.startsWith("✅") ? 'bg-green-50/70 dark:bg-green-900/20 border border-green-200 dark:border-green-800' :
-                                'bg-blue-50/70 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800')
-                            }`}>
-                            <div className="flex items-center">
-                                {error ? <AlertCircle className="text-red-600 dark:text-red-400 mr-2" size={20} /> :
-                                    (status.startsWith("✅") ? <CheckCircle className="text-green-600 dark:text-green-400 mr-2" size={20} /> :
-                                        <Info className="text-blue-600 dark:text-blue-400 mr-2" size={20} />)}
-                                <p className={`font-medium ${error ? 'text-red-800 dark:text-red-200' :
-                                    (status.startsWith("✅") ? 'text-green-800 dark:text-green-200' :
-                                        'text-blue-800 dark:text-blue-200')
-                                    }`}>
-                                    {error || status}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
                 {/* Main Content Card */}
                 <div className="bg-white/70 backdrop-blur-sm border border-gray-200 dark:bg-[rgba(30,30,30,0.5)] dark:backdrop-blur-md dark:border-gray-800 rounded-2xl shadow-xl lg:p-8 md:p-4 p-2 min-h-[600px]">
@@ -740,7 +883,8 @@ function Dashboard() {
                 <div className="flex justify-between items-center mt-8">
                     <button
                         onClick={prevStep}
-                        disabled={currentStep === 1}
+                        // Disable if at first step or saving configs or loading for campaign
+                        disabled={currentStep === 1 || isSavingConfigs || isLoading}
                         className="flex items-center px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
                     >
                         <ChevronLeft className="mr-2" size={20} />
@@ -753,7 +897,8 @@ function Dashboard() {
 
                     <button
                         onClick={nextStep}
-                        disabled={currentStep === 3 || !canProceedToNextStep()}
+                        // Disable if at last step, cannot proceed, or saving configs, or loading for campaign
+                        disabled={currentStep === 3 || !canProceedToNextStep() || isSavingConfigs || isLoading}
                         className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
                     >
                         Next
