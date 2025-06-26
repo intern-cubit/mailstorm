@@ -47,21 +47,16 @@ function Dashboard() {
     const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'successful', 'failed'
     const [searchTerm, setSearchTerm] = useState('');
 
-    // NEW: Toast notification state
-    const [toastMessage, setToastMessage] = useState(null); // { type: 'success' | 'error', message: '...' }
+    const [toastMessage, setToastMessage] = useState(null); 
 
-    // Helper function to show toast messages
     const showToast = useCallback((type, message) => {
         setToastMessage({ type, message });
         const timer = setTimeout(() => {
             setToastMessage(null);
-        }, 5000); // Hide after 5 seconds
+        }, 5000); 
         return () => clearTimeout(timer);
     }, []);
 
-
-    // --- Backend API Integration for Email Configurations ---
-    // Load email configurations from backend on component mount
     useEffect(() => {
         const loadConfigs = async () => {
             try {
@@ -74,20 +69,16 @@ function Dashboard() {
                 if (Array.isArray(data) && data.length > 0) {
                     setEmailConfigs(data);
                 } else {
-                    // If no configs are loaded, ensure there's at least one default
                     setEmailConfigs([{ senderEmail: '', senderPassword: '', smtpServer: '', smtpPort: 587 }]);
                 }
             } catch (err) {
                 console.error("Error loading email configurations:", err.message);
-                setError("Failed to load saved email configurations: " + err.message);
-                showToast('error', "Failed to load saved email configurations.");
-                // Still ensure a default config is present even if loading fails
                 setEmailConfigs([{ senderEmail: '', senderPassword: '', smtpServer: '', smtpPort: 587 }]);
             }
         };
 
         loadConfigs();
-    }, [showToast]); // Include showToast in dependencies to satisfy useCallback linter, though it's stable
+    }, [showToast]); 
 
 
     // NEW: Function to handle saving email configurations manually

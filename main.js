@@ -125,7 +125,7 @@ ipcMain.on('quit_app', async (event) => {
         type: 'question',
         buttons: ['OK', 'Cancel'],
         defaultId: 0, 
-        title: 'Mail Storm', 
+        title: 'MailStorm', 
         message: 'Are you sure you want to quit the application?',
         icon: path.join(__dirname, 'build', 'icon.ico')
     };
@@ -145,7 +145,7 @@ ipcMain.on("show-logout-dialog", async (event) => {
         type: "info", 
         buttons: ["OK"],
         defaultId: 0,
-        title: "Mail Storm",
+        title: "MailStorm",
         message: "You have been logged out. The application will now restart.",
         icon: path.join(__dirname, "build", "icon.ico"),
     };

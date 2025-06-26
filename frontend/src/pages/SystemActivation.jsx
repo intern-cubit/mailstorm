@@ -43,7 +43,7 @@ const SystemActivation = ({ onActivationSuccess }) => {
                     }
                 } else {
                     setIsActivated(false);
-                    setMessage(data.message || 'System is not activated. Please enter your key.');
+                    setMessage('System is not activated. Please enter your key.');
                 }
             } catch (error) {
                 console.error('Error checking initial activation status:', error);
@@ -60,8 +60,6 @@ const SystemActivation = ({ onActivationSuccess }) => {
 
     const handleActivate = async () => {
         if (!activationKey) {
-            setMessage('Please enter an activation key.');
-            toast.error('Please enter an activation key.');
             return;
         }
 
@@ -115,9 +113,7 @@ const SystemActivation = ({ onActivationSuccess }) => {
                     errorMessage = `HTTP error! Status: ${response.status}. Please check backend logs.`;
                 }
 
-                setMessage(`Activation failed: ${errorMessage}`);
                 setIsActivated(false);
-                toast.error(`Activation failed: ${errorMessage}`);
                 console.error('Activation failed response:', data);
             }
         } catch (error) {

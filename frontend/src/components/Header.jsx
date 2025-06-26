@@ -114,7 +114,7 @@ const Header = () => {
     return (
         <header className="flex justify-between items-center py-4 px-6 bg-white/70 backdrop-blur-sm border border-gray-200 dark:bg-[rgba(30,30,30,0.5)] dark:backdrop-blur-md dark:border dark:border-gray-800 shadow-sm">
             <div className="flex items-center">
-                <h1 className="text-3xl font-extrabold text-blue-700 mr-2">
+                <h1 className="text-3xl font-extrabold text-blue-700">
                     Mail
                 </h1>
                 <span className="text-3xl font-extrabold text-gray-900 dark:text-white flex items-center">
