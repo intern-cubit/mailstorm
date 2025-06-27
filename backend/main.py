@@ -8,14 +8,15 @@ import hashlib
 import asyncio
 import sys # Import sys for sys.exit()
 import requests
-
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
-from contextlib import asynccontextmanager
 import logging
 
+from pathlib import Path # Add this, it was missing from your provided file but used later
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Body # <--- ADD Body here
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field, EmailStr # <--- ADD EmailStr here
+from contextlib import asynccontextmanager
+from typing import List, Optional # <--- ADD List and Optional here (List is explicitly used by FastAPI now)
 # --- Logging Configuration ---
 # Configure logging for better output in console and potentially files
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -96,7 +97,6 @@ class EmailConfig(BaseModel):
     senderPassword: str = Field(..., alias="senderPassword", description="Sender's email password or app password")
     smtpServer: str = Field(..., alias="smtpServer", description="SMTP server address (e.g., smtp.gmail.com)")
     smtpPort: int = Field(587, alias="smtpPort", description="SMTP server port (e.g., 587 for TLS, 465 for SSL)")
-
 
 def get_motherboard_serial():
     try:
@@ -351,6 +351,101 @@ async def load_email_configs_endpoint():
     except Exception as e:
         logger.error(f"Failed to load email configurations: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to load email configurations: {e}")
+
+def load_email_configs_from_file() -> List[EmailConfig]:
+    """Loads email configurations from the JSON file."""
+    if not Path(EMAIL_CONFIG_FILE).exists():
+        logger.info(f"Email config file not found: {EMAIL_CONFIG_FILE}. Returning empty list.")
+        return []
+    try:
+        with open(EMAIL_CONFIG_FILE, 'r') as f:
+            data = json.load(f)
+            # Ensure loaded data is a list and contains dictionaries
+            if not isinstance(data, list):
+                logger.warning(f"File {EMAIL_CONFIG_FILE} content is not a list. Initializing with empty list.")
+                return []
+            return [EmailConfig(**config) for config in data]
+    except json.JSONDecodeError:
+        logger.warning(f"Error decoding JSON from {EMAIL_CONFIG_FILE}. Returning empty list.")
+        return []
+    except Exception as e:
+        logger.error(f"Unexpected error loading email configs from {EMAIL_CONFIG_FILE}: {e}", exc_info=True)
+        return []
+  
+def save_email_configs_to_file(configs: List[EmailConfig]):
+    """Saves email configurations to the JSON file."""
+    try:
+        # Convert Pydantic models to dictionaries for JSON serialization
+        configs_data = [config.model_dump(by_alias=True) for config in configs]
+        with open(EMAIL_CONFIG_FILE, 'w') as f:
+            json.dump(configs_data, f, indent=4)
+        logger.info(f"Email configurations saved to {EMAIL_CONFIG_FILE}")
+    except Exception as e:
+        logger.error(f"Failed to save email configurations to file: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to save email configurations to file: {e}")
+
+@app.post("/save-single-email-config")
+async def save_single_email_config_endpoint(new_config: EmailConfig = Body(...)):
+    """
+    Saves a single email configuration. If a configuration with the same senderEmail already exists, it updates it.
+    Otherwise, it appends the new configuration.
+    """
+    logger.info(f"Received request to save single email config for: {new_config.senderEmail}")
+    try:
+        current_configs = load_email_configs_from_file()
+        found = False
+        for i, config in enumerate(current_configs):
+            if config.senderEmail.lower() == new_config.senderEmail.lower():
+                current_configs[i] = new_config  # Update existing config
+                found = True
+                break
+        if not found:
+            current_configs.append(new_config) # Add new config if not found
+
+        save_email_configs_to_file(current_configs)
+
+        # Return all updated configs for immediate UI refresh
+        return JSONResponse(status_code=200, content={
+            "message": f"Configuration for {new_config.senderEmail} saved successfully!",
+            "all_configs": [cfg.model_dump(by_alias=True) for cfg in current_configs]
+        })
+    except Exception as e:
+        logger.error(f"Failed to save single email configuration: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to save email configuration: {e}")
+
+# class DeleteEmailRequest(BaseModel):
+#     senderEmail: EmailStr = Field(..., alias="senderEmail", description="Sender email to delete")
+
+@app.post("/delete-email-config")
+async def delete_email_config_endpoint(request: EmailConfig = Body(...)):
+    logger.info(f"Received request to delete email config for: {request.senderEmail}")
+    try:
+        current_configs = load_email_configs_from_file()
+        print(current_configs)  # Debugging line to check current configs
+        initial_count = len(current_configs)
+        
+        # Filter out the config to be deleted
+        updated_configs = [
+            config for config in current_configs
+            if config.senderEmail.lower() != request.senderEmail.lower()
+        ]
+
+        if len(updated_configs) == initial_count:
+            # No config was removed, meaning it wasn't found
+            raise HTTPException(status_code=404, detail=f"Email configuration for {request.senderEmail} not found.")
+
+        save_email_configs_to_file(updated_configs)
+        
+        # Return all remaining configs for immediate UI refresh
+        return JSONResponse(status_code=200, content={
+            "message": f"Configuration for {request.senderEmail} deleted successfully!",
+            "all_configs": [cfg.model_dump(by_alias=True) for cfg in updated_configs]
+        })
+    except HTTPException as e:
+        raise e # Re-raise FastAPI HTTPExceptions directly
+    except Exception as e:
+        logger.error(f"Failed to delete email configuration: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to delete email configuration: {e}")
 
 @app.post("/send-emails")
 async def send_emails_endpoint(

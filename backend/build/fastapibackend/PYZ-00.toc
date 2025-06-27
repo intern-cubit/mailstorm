@@ -624,6 +624,534 @@
    'C:\\Program '
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\\Lib\\dis.py',
    'PYMODULE'),
+  ('dns',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\__init__.py',
+   'PYMODULE'),
+  ('dns._asyncbackend',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\_asyncbackend.py',
+   'PYMODULE'),
+  ('dns._asyncio_backend',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\_asyncio_backend.py',
+   'PYMODULE'),
+  ('dns._ddr',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\_ddr.py',
+   'PYMODULE'),
+  ('dns._features',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\_features.py',
+   'PYMODULE'),
+  ('dns._immutable_ctx',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\_immutable_ctx.py',
+   'PYMODULE'),
+  ('dns._trio_backend',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\_trio_backend.py',
+   'PYMODULE'),
+  ('dns.asyncbackend',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\asyncbackend.py',
+   'PYMODULE'),
+  ('dns.asyncquery',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\asyncquery.py',
+   'PYMODULE'),
+  ('dns.asyncresolver',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\asyncresolver.py',
+   'PYMODULE'),
+  ('dns.dnssectypes',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\dnssectypes.py',
+   'PYMODULE'),
+  ('dns.edns',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\edns.py',
+   'PYMODULE'),
+  ('dns.entropy',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\entropy.py',
+   'PYMODULE'),
+  ('dns.enum',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\enum.py',
+   'PYMODULE'),
+  ('dns.exception',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\exception.py',
+   'PYMODULE'),
+  ('dns.flags',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\flags.py',
+   'PYMODULE'),
+  ('dns.grange',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\grange.py',
+   'PYMODULE'),
+  ('dns.immutable',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\immutable.py',
+   'PYMODULE'),
+  ('dns.inet',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\inet.py',
+   'PYMODULE'),
+  ('dns.ipv4',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\ipv4.py',
+   'PYMODULE'),
+  ('dns.ipv6',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\ipv6.py',
+   'PYMODULE'),
+  ('dns.message',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\message.py',
+   'PYMODULE'),
+  ('dns.name',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\name.py',
+   'PYMODULE'),
+  ('dns.nameserver',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\nameserver.py',
+   'PYMODULE'),
+  ('dns.node',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\node.py',
+   'PYMODULE'),
+  ('dns.opcode',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\opcode.py',
+   'PYMODULE'),
+  ('dns.query',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\query.py',
+   'PYMODULE'),
+  ('dns.quic',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\quic\\__init__.py',
+   'PYMODULE'),
+  ('dns.quic._asyncio',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\quic\\_asyncio.py',
+   'PYMODULE'),
+  ('dns.quic._common',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\quic\\_common.py',
+   'PYMODULE'),
+  ('dns.quic._sync',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\quic\\_sync.py',
+   'PYMODULE'),
+  ('dns.quic._trio',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\quic\\_trio.py',
+   'PYMODULE'),
+  ('dns.rcode',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rcode.py',
+   'PYMODULE'),
+  ('dns.rdata',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdata.py',
+   'PYMODULE'),
+  ('dns.rdataclass',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdataclass.py',
+   'PYMODULE'),
+  ('dns.rdataset',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdataset.py',
+   'PYMODULE'),
+  ('dns.rdatatype',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdatatype.py',
+   'PYMODULE'),
+  ('dns.rdtypes',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\__init__.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\__init__.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.AFSDB',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\AFSDB.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.AMTRELAY',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\AMTRELAY.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.AVC',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\AVC.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.CAA',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\CAA.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.CDNSKEY',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\CDNSKEY.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.CDS',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\CDS.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.CERT',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\CERT.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.CNAME',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\CNAME.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.CSYNC',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\CSYNC.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.DLV',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\DLV.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.DNAME',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\DNAME.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.DNSKEY',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\DNSKEY.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.DS',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\DS.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.EUI48',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\EUI48.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.EUI64',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\EUI64.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.GPOS',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\GPOS.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.HINFO',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\HINFO.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.HIP',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\HIP.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.ISDN',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\ISDN.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.L32',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\L32.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.L64',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\L64.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.LOC',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\LOC.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.LP',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\LP.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.MX',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\MX.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.NID',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\NID.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.NINFO',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\NINFO.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.NS',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\NS.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.NSEC',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\NSEC.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.NSEC3',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\NSEC3.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.NSEC3PARAM',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\NSEC3PARAM.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.OPENPGPKEY',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\OPENPGPKEY.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.OPT',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\OPT.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.PTR',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\PTR.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.RESINFO',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\RESINFO.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.RP',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\RP.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.RRSIG',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\RRSIG.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.RT',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\RT.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.SMIMEA',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\SMIMEA.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.SOA',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\SOA.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.SPF',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\SPF.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.SSHFP',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\SSHFP.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.TKEY',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\TKEY.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.TLSA',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\TLSA.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.TSIG',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\TSIG.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.TXT',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\TXT.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.URI',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\URI.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.WALLET',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\WALLET.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.X25',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\X25.py',
+   'PYMODULE'),
+  ('dns.rdtypes.ANY.ZONEMD',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\ANY\\ZONEMD.py',
+   'PYMODULE'),
+  ('dns.rdtypes.CH',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\CH\\__init__.py',
+   'PYMODULE'),
+  ('dns.rdtypes.CH.A',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\CH\\A.py',
+   'PYMODULE'),
+  ('dns.rdtypes.IN',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\IN\\__init__.py',
+   'PYMODULE'),
+  ('dns.rdtypes.IN.A',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\IN\\A.py',
+   'PYMODULE'),
+  ('dns.rdtypes.IN.AAAA',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\IN\\AAAA.py',
+   'PYMODULE'),
+  ('dns.rdtypes.IN.APL',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\IN\\APL.py',
+   'PYMODULE'),
+  ('dns.rdtypes.IN.DHCID',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\IN\\DHCID.py',
+   'PYMODULE'),
+  ('dns.rdtypes.IN.HTTPS',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\IN\\HTTPS.py',
+   'PYMODULE'),
+  ('dns.rdtypes.IN.IPSECKEY',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\IN\\IPSECKEY.py',
+   'PYMODULE'),
+  ('dns.rdtypes.IN.KX',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\IN\\KX.py',
+   'PYMODULE'),
+  ('dns.rdtypes.IN.NAPTR',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\IN\\NAPTR.py',
+   'PYMODULE'),
+  ('dns.rdtypes.IN.NSAP',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\IN\\NSAP.py',
+   'PYMODULE'),
+  ('dns.rdtypes.IN.NSAP_PTR',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\IN\\NSAP_PTR.py',
+   'PYMODULE'),
+  ('dns.rdtypes.IN.PX',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\IN\\PX.py',
+   'PYMODULE'),
+  ('dns.rdtypes.IN.SRV',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\IN\\SRV.py',
+   'PYMODULE'),
+  ('dns.rdtypes.IN.SVCB',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\IN\\SVCB.py',
+   'PYMODULE'),
+  ('dns.rdtypes.IN.WKS',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\IN\\WKS.py',
+   'PYMODULE'),
+  ('dns.rdtypes.dnskeybase',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\dnskeybase.py',
+   'PYMODULE'),
+  ('dns.rdtypes.dsbase',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\dsbase.py',
+   'PYMODULE'),
+  ('dns.rdtypes.euibase',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\euibase.py',
+   'PYMODULE'),
+  ('dns.rdtypes.mxbase',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\mxbase.py',
+   'PYMODULE'),
+  ('dns.rdtypes.nsbase',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\nsbase.py',
+   'PYMODULE'),
+  ('dns.rdtypes.svcbbase',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\svcbbase.py',
+   'PYMODULE'),
+  ('dns.rdtypes.tlsabase',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\tlsabase.py',
+   'PYMODULE'),
+  ('dns.rdtypes.txtbase',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\txtbase.py',
+   'PYMODULE'),
+  ('dns.rdtypes.util',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rdtypes\\util.py',
+   'PYMODULE'),
+  ('dns.renderer',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\renderer.py',
+   'PYMODULE'),
+  ('dns.resolver',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\resolver.py',
+   'PYMODULE'),
+  ('dns.reversename',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\reversename.py',
+   'PYMODULE'),
+  ('dns.rrset',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\rrset.py',
+   'PYMODULE'),
+  ('dns.serial',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\serial.py',
+   'PYMODULE'),
+  ('dns.set',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\set.py',
+   'PYMODULE'),
+  ('dns.tokenizer',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\tokenizer.py',
+   'PYMODULE'),
+  ('dns.transaction',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\transaction.py',
+   'PYMODULE'),
+  ('dns.tsig',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\tsig.py',
+   'PYMODULE'),
+  ('dns.ttl',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\ttl.py',
+   'PYMODULE'),
+  ('dns.update',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\update.py',
+   'PYMODULE'),
+  ('dns.version',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\version.py',
+   'PYMODULE'),
+  ('dns.win32util',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\win32util.py',
+   'PYMODULE'),
+  ('dns.wire',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\wire.py',
+   'PYMODULE'),
+  ('dns.xfr',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\xfr.py',
+   'PYMODULE'),
+  ('dns.zone',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\zone.py',
+   'PYMODULE'),
+  ('dns.zonefile',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\zonefile.py',
+   'PYMODULE'),
+  ('dns.zonetypes',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\dns\\zonetypes.py',
+   'PYMODULE'),
   ('doctest',
    'C:\\Program '
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\\Lib\\doctest.py',
@@ -730,6 +1258,34 @@
    'PYMODULE'),
   ('email_sender',
    'D:\\Codes\\CuBIT Internship\\email_marketing\\backend\\email_sender.py',
+   'PYMODULE'),
+  ('email_validator',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\email_validator\\__init__.py',
+   'PYMODULE'),
+  ('email_validator.deliverability',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\email_validator\\deliverability.py',
+   'PYMODULE'),
+  ('email_validator.exceptions_types',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\email_validator\\exceptions_types.py',
+   'PYMODULE'),
+  ('email_validator.rfc_constants',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\email_validator\\rfc_constants.py',
+   'PYMODULE'),
+  ('email_validator.syntax',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\email_validator\\syntax.py',
+   'PYMODULE'),
+  ('email_validator.validate_email',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\email_validator\\validate_email.py',
+   'PYMODULE'),
+  ('email_validator.version',
+   'D:\\Codes\\CuBIT '
+   'Internship\\email_marketing\\backend\\.venv\\Lib\\site-packages\\email_validator\\version.py',
    'PYMODULE'),
   ('fastapi',
    'D:\\Codes\\CuBIT '

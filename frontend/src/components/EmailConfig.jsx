@@ -1,9 +1,12 @@
 import React from 'react';
-import { Mail, Server, Info, Eye, EyeOff, PlusCircle, XCircle } from 'lucide-react';
+import { Mail, Server, Info, Eye, EyeOff, PlusCircle, XCircle, Settings, Loader2, Trash } from 'lucide-react'; // Added Loader2
 
 const EmailConfig = ({
     emailConfigs, // This will be an array of objects: [{ senderEmail, senderPassword, smtpServer, smtpPort }]
-    onEmailConfigsChange, // Callback to update the parent's state
+    onEmailConfigsChange, // Callback to update the parent's state (for add/remove)
+    onSaveConfig, // Callback to save a *single* config to backend
+    onDeleteConfig, // Callback to delete a *single* config from backend
+    isSavingConfigs // General saving state, consider making it per-index if needed
 }) => {
     // We'll manage the visibility of passwords for each entry
     const [showPassword, setShowPassword] = React.useState({});
@@ -29,7 +32,7 @@ const EmailConfig = ({
         onEmailConfigsChange([...emailConfigs, { senderEmail: '', senderPassword: '', smtpServer: '', smtpPort: 587 }]);
     };
 
-    const handleRemoveConfig = (index) => {
+    const handleRemoveConfigLocally = (index) => {
         const updatedConfigs = emailConfigs.filter((_, i) => i !== index);
         onEmailConfigsChange(updatedConfigs);
     };
@@ -50,7 +53,8 @@ const EmailConfig = ({
                     {emailConfigs.length > 1 && (
                         <button
                             type="button"
-                            onClick={() => handleRemoveConfig(index)}
+                            // Call onDeleteConfig first, then remove locally
+                            onClick={() => { onDeleteConfig(config.senderEmail); handleRemoveConfigLocally(index); }}
                             className="absolute top-4 right-4 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                             aria-label={`Remove email configuration ${index + 1}`}
                         >
@@ -135,8 +139,8 @@ const EmailConfig = ({
                                             type="button"
                                             onClick={() => handleQuickConfig(c, index)}
                                             className={`p-3 text-sm font-medium rounded-lg border transition-all duration-200 ${config.smtpServer === c.server && config.smtpPort === c.port
-                                                    ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-500 text-blue-700 dark:text-blue-300'
-                                                    : 'bg-gray-50 dark:bg-gray-800/50 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                                                ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-500 text-blue-700 dark:text-blue-300'
+                                                : 'bg-gray-50 dark:bg-gray-800/50 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
                                                 }`}
                                         >
                                             {c.name}
@@ -178,6 +182,43 @@ const EmailConfig = ({
                             </div>
                         </div>
                     </div>
+                    <div className="mt-6 flex justify-end gap-2">
+                        {/* The delete button (XCircle) is at the top right now */}
+                        <button
+                            onClick={() => onDeleteConfig(config, index)} // Pass specific config and index
+                            disabled={isSavingConfigs || !config.senderEmail || !config.senderPassword || !config.smtpServer || !config.smtpPort}
+                            className="px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-md flex items-center justify-center"
+                        >
+                            {isSavingConfigs ? (
+                                <>
+                                    <Loader2 className="mr-3 animate-spin" size={20} />
+                                    Deleting...
+                                </>
+                            ) : (
+                                <>
+                                    <Trash className="mr-3" size={20} />
+                                    Delete Email
+                                </>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => onSaveConfig(config, index)} // Pass specific config and index
+                            disabled={isSavingConfigs || !config.senderEmail || !config.senderPassword || !config.smtpServer || !config.smtpPort}
+                            className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-md flex items-center justify-center"
+                        >
+                            {isSavingConfigs ? (
+                                <>
+                                    <Loader2 className="mr-3 animate-spin" size={20} />
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <Settings className="mr-3" size={20} />
+                                    Save Email
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
             ))}
 
@@ -188,7 +229,6 @@ const EmailConfig = ({
             >
                 <PlusCircle size={20} className="mr-2" /> Add Another Email Account
             </button>
-
 
             {/* Security Notice */}
             <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6">
@@ -216,7 +256,7 @@ const EmailConfig = ({
                 </div>
             </div>
 
-            {/* Connection Status Indicator - Consider if this is still applicable for multiple configs */}
+            {/* Connection Status Indicator */}
             {emailConfigs.every(config => config.senderEmail && config.senderPassword && config.smtpServer && config.smtpPort) && (
                 <div className="mt-6 p-4 bg-green-50/70 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
                     <div className="flex items-center text-green-800 dark:text-green-200">

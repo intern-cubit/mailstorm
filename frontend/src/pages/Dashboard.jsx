@@ -13,7 +13,7 @@ import UpdateStatus from '../components/UpdateStatus'; // This component appears
 function Dashboard() {
     const [currentStep, setCurrentStep] = useState(1);
     const [subject, setSubject] = useState("");
-    const [message, setMessage] = ("");
+    const [message, setMessage] = useState(""); // Corrected: was ("")
     const [csvFile, setCsvFile] = useState(null);
     const [csvData, setCsvData] = useState(null);
     const [csvColumns, setCsvColumns] = useState([]);
@@ -47,13 +47,13 @@ function Dashboard() {
     const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'successful', 'failed'
     const [searchTerm, setSearchTerm] = useState('');
 
-    const [toastMessage, setToastMessage] = useState(null); 
+    const [toastMessage, setToastMessage] = useState(null);
 
     const showToast = useCallback((type, message) => {
         setToastMessage({ type, message });
         const timer = setTimeout(() => {
             setToastMessage(null);
-        }, 5000); 
+        }, 5000);
         return () => clearTimeout(timer);
     }, []);
 
@@ -73,54 +73,96 @@ function Dashboard() {
                 }
             } catch (err) {
                 console.error("Error loading email configurations:", err.message);
+                showToast('error', `Failed to load email configurations: ${err.message}`); // Added toast
                 setEmailConfigs([{ senderEmail: '', senderPassword: '', smtpServer: '', smtpPort: 587 }]);
             }
         };
 
         loadConfigs();
-    }, [showToast]); 
-
-
-    // NEW: Function to handle saving email configurations manually
-    const handleSaveEmailConfigs = async () => {
+    }, [showToast]); // Added showToast to dependencies
+    // NEW: Function to handle saving a single email configuration
+    const handleSaveSingleConfig = async (configToSave, index) => {
         setError("");
         setStatus("");
         setIsSavingConfigs(true); // Start loading state for saving
 
-        // Basic validation before saving
-        const invalidConfigs = emailConfigs.some(config =>
-            !config.senderEmail || !config.senderPassword || !config.smtpServer || !config.smtpPort
-        );
-        if (invalidConfigs) {
-            setError("Please fill in all details for all sender email configurations before saving.");
-            showToast('error', "Please fill in all details for all sender email configurations.");
+        // Basic validation before saving a single config
+        if (!configToSave.senderEmail || !configToSave.senderPassword || !configToSave.smtpServer || !configToSave.smtpPort) {
+            setError("Please fill in all details for this email configuration before saving.");
+            showToast('error', "Please fill in all details for this email configuration.");
             setIsSavingConfigs(false);
             return;
         }
 
         try {
-            const response = await fetch('http://localhost:8000/save-email-configs', {
+            const response = await fetch('http://localhost:8000/save-single-email-config', { // New endpoint
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(emailConfigs),
+                body: JSON.stringify(configToSave), // Send only the specific config
             });
             if (!response.ok) {
+                console.log(response)
                 const errorData = await response.json();
-                throw new Error(errorData.detail || 'Failed to save email configurations to backend.');
+                throw new Error(errorData.detail || 'Failed to save email configuration to backend.');
             }
-            setStatus("✅ Email configurations saved successfully!");
-            showToast('success', "Email configurations saved successfully!");
+            const savedConfigResponse = await response.json(); // Backend might return the updated list
+            // Update local state based on the backend's source of truth if available, or just confirm success
+            setEmailConfigs(savedConfigResponse.all_configs || emailConfigs); // Assuming backend returns all configs
+            setStatus(`✅ Email configuration for ${configToSave.senderEmail} saved successfully!`);
+            showToast('success', `Configuration for ${configToSave.senderEmail} saved successfully!`);
         } catch (err) {
-            console.error("Error saving email configurations:", err.message);
-            setError("❌ Failed to save email configurations: " + err.message);
-            showToast('error', `Failed to save configurations: ${err.message}`);
+            console.error("Error saving email configuration:", err.message);
+            setError(`❌ Failed to save configuration for ${configToSave.senderEmail}: ` + err.message);
+            showToast('error', `Failed to save configuration for ${configToSave.senderEmail}: ${err.message}`);
         } finally {
             setIsSavingConfigs(false); // End loading state
         }
     };
-    // --- End Backend API Integration ---
+
+    // NEW: Function to handle deleting a single email configuration
+    const handleDeleteSingleConfig = async (emailToDelete, index) => { // Takes senderEmail as identifier
+        setError("");
+        setStatus("");
+        setIsSavingConfigs(true); // Use saving configs loader for delete too
+
+        if (!emailToDelete.senderEmail || !emailToDelete.senderPassword || !emailToDelete.smtpServer || !emailToDelete.smtpPort) {
+            setError("Please fill in all details for this email configuration before saving.");
+            showToast('error', "Please fill in all details for this email configuration.");
+            setIsSavingConfigs(false);
+            return;
+        }
+
+        try {
+            // --- ADDED FOR DEBUGGING ---
+            console.log("Attempting to delete email config. Payload:", JSON.stringify({ senderEmail: emailToDelete }));
+            // --- END DEBUGGING ---
+
+            const response = await fetch('http://localhost:8000/delete-email-config', { // New endpoint
+                method: 'POST', // or DELETE, depending on backend design
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify( emailToDelete ), // Send identifier with camelCase key
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Failed to delete email configuration from backend.');
+            }
+            const deletedConfigResponse = await response.json();
+            // Update local state based on the backend's source of truth
+            setEmailConfigs(deletedConfigResponse.all_configs || emailConfigs.filter(cfg => cfg.senderEmail !== emailToDelete)); // Assuming backend returns all configs
+            setStatus(`🗑️ Email configuration for ${emailToDelete} deleted successfully!`);
+            showToast('success', `Configuration for ${emailToDelete} deleted successfully!`);
+        } catch (err) {
+            console.error("Error deleting email configuration:", err.message);
+            setError(`❌ Failed to delete configuration for ${emailToDelete}: ` + err.message);
+            showToast('error', `Failed to delete configuration for ${emailToDelete}: ${err.message}`);
+        } finally {
+            setIsSavingConfigs(false); // End loading state
+        }
+    };
 
     const steps = [
         { id: 1, title: "Upload Emails", icon: FileText, description: "Import your contact list" },
@@ -549,28 +591,10 @@ function Dashboard() {
                         <EmailConfig
                             emailConfigs={emailConfigs}
                             onEmailConfigsChange={setEmailConfigs}
+                            onSaveConfig={handleSaveSingleConfig} // Pass the single save handler
+                            onDeleteConfig={handleDeleteSingleConfig} // Pass the single delete handler
+                            isSavingConfigs={isSavingConfigs}
                         />
-
-                        {/* NEW: Remember Emails Button */}
-                        <div className="mt-6 flex justify-end">
-                            <button
-                                onClick={handleSaveEmailConfigs}
-                                disabled={isSavingConfigs || emailConfigs.some(config => !config.senderEmail || !config.senderPassword || !config.smtpServer || !config.smtpPort)}
-                                className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-md flex items-center justify-center"
-                            >
-                                {isSavingConfigs ? (
-                                    <>
-                                        <Loader2 className="mr-3 animate-spin" size={20} />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Settings className="mr-3" size={20} />
-                                        Remember Emails
-                                    </>
-                                )}
-                            </button>
-                        </div>
                     </div>
                 );
 
@@ -784,11 +808,10 @@ function Dashboard() {
             {/* Toast Notification */}
             {toastMessage && (
                 <div
-                    className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center space-x-3 transition-opacity duration-300 ${
-                        toastMessage.type === 'success'
-                            ? 'bg-green-500 text-white'
-                            : 'bg-red-500 text-white'
-                    }`}
+                    className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center space-x-3 transition-opacity duration-300 ${toastMessage.type === 'success'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-red-500 text-white'
+                        }`}
                     role="alert"
                 >
                     {toastMessage.type === 'success' ? (
