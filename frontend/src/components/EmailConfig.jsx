@@ -54,7 +54,7 @@ const EmailConfig = ({
                         <button
                             type="button"
                             // Call onDeleteConfig first, then remove locally
-                            onClick={() => { onDeleteConfig(config.senderEmail); handleRemoveConfigLocally(index); }}
+                            onClick={() => { handleRemoveConfigLocally(index); }}
                             className="absolute top-4 right-4 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                             aria-label={`Remove email configuration ${index + 1}`}
                         >
