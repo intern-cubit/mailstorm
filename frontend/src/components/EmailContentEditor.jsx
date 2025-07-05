@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Bold, Palette, Type, MessageSquare, Italic, Underline } from 'lucide-react';
+import { Bold, Palette, Type, MessageSquare, Italic, Underline, Eye } from 'lucide-react'; // Import Eye icon for preview
 import VariableButtons from './VariableButtons';
 
 const EmailContentEditor = ({
@@ -201,15 +201,28 @@ const EmailContentEditor = ({
 
                 {/* Message Input Area (Conditional Render) */}
                 {isHtmlEmail ? (
-                    // When HTML Email is selected, allow raw HTML input
-                    <textarea
-                        id="email-message-html" // Changed ID for clarity
-                        placeholder="Paste your full HTML code here for the email content."
-                        onChange={(e) => onMessageChange(e.target.value)}
-                        value={message} // This textarea will show raw HTML
-                        rows={10}
-                        className="w-full p-4 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50/70 dark:bg-[rgba(30,30,30,0.5)] dark:backdrop-blur-sm text-gray-900 dark:text-white resize-y shadow-inner text-base font-mono" // Added font-mono for code-like appearance
-                    />
+                    <>
+                        {/* When HTML Email is selected, allow raw HTML input */}
+                        <textarea
+                            id="email-message-html" // Changed ID for clarity
+                            placeholder="Paste your full HTML code here for the email content."
+                            onChange={(e) => onMessageChange(e.target.value)}
+                            value={message} // This textarea will show raw HTML
+                            rows={10}
+                            className="w-full p-4 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50/70 dark:bg-[rgba(30,30,30,0.5)] dark:backdrop-blur-sm text-gray-900 dark:text-white resize-y shadow-inner text-base font-mono" // Added font-mono for code-like appearance
+                        />
+                        {/* HTML Preview Section */}
+                        <div className="mt-6">
+                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                                <Eye className="mr-2 text-blue-600 dark:text-blue-400" size={18} />
+                                HTML Email Preview
+                            </h4>
+                            <div
+                                className="w-full p-4 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50/70 dark:bg-[rgba(30,30,30,0.5)] dark:backdrop-blur-sm overflow-auto max-h-96"
+                                dangerouslySetInnerHTML={{ __html: message }}
+                            />
+                        </div>
+                    </>
                 ) : (
                     // When Plain Text is selected, show the textarea with formatting buttons
                     <textarea
