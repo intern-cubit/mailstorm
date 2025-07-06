@@ -248,7 +248,7 @@ function Dashboard() {
             showToast('success', `CSV processed! ${result.total_rows} Emails found.`);
 
 
-            if (result.columns.some(col => col.toLowerCase() === 'email')) {
+            if (result.columns.some(col => col.toLowerCase().trim() === 'email')) {
                 const emailCol = result.columns.find(col => col.toLowerCase() === 'email');
                 setSelectedVariables(prev => (prev.includes(emailCol) ? prev : [...prev, emailCol]));
             } else {
@@ -340,7 +340,7 @@ function Dashboard() {
             setIsLoading(false);
             return;
         }
-        if (!csvColumns.some(col => col.toLowerCase() === 'email')) {
+        if (!csvColumns.some(col => col.toLowerCase().trim() === 'email')) {
             setError("Your CSV file must contain an 'email' column for sending emails.");
             showToast('error', "CSV must contain an 'email' column.");
             setIsLoading(false);
@@ -427,7 +427,7 @@ function Dashboard() {
     const canProceedToNextStep = () => {
         switch (currentStep) {
             case 1:
-                return csvFile && csvData && csvColumns.some(col => col.toLowerCase() === 'email');
+                return csvFile && csvData && csvColumns.some(col => col.toLowerCase().trim() === 'email');
             case 2:
                 // Ensure there's at least one config and all its fields are filled
                 return emailConfigs.length > 0 && emailConfigs.every(config =>

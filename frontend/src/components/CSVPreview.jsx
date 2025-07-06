@@ -20,7 +20,7 @@ const CSVPreview = ({ data, columns, onClose, totalRows }) => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const hasEmailColumn = columns.some(col => col.toLowerCase() === 'email');
+    const hasEmailColumn = columns.some(col => col.toLowerCase().trim() === 'email');
 
     const displayColumns = columns.slice(0, 4);
     const remainingColumns = columns.length - displayColumns.length;

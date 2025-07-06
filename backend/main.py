@@ -505,8 +505,11 @@ async def send_emails_endpoint(
                 status_code=422,
                 detail=f"Variables not found in CSV: {', '.join(missing_vars)}"
             )
+        
+        cleaned_columns = [col.strip().lower() for col in df.columns]
+        print(cleaned_columns)
 
-        if 'email' not in df.columns:
+        if 'email' not in cleaned_columns:
             raise HTTPException(
                 status_code=422,
                 detail="CSV must contain an 'email' column for sending emails."

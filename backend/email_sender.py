@@ -140,6 +140,20 @@ def send_emails_from_dataframe_enhanced(
     successful_emails: List[str] = []
     failed_emails: List[str] = []
 
+    email_column_actual_name = None
+    for col in df.columns:
+        if col.strip().lower() == 'email':
+            email_column_actual_name = col
+            break
+
+    if email_column_actual_name is None:
+        print("Error: CSV must contain an 'email' column (case-insensitive, whitespace-trimmed).")
+        failed_emails_for_missing_column = [
+            f"Row {idx+1} (no 'email' column found)" for idx in range(len(df))
+        ]
+        return {"successful_emails": [], "failed_emails": failed_emails_for_missing_column}
+
+
     if not email_configs:
         print("No email configurations provided. Email sending will fail for all recipients.")
         failed_emails = [str(row.get("email", "N/A")) for index, row in df.iterrows()]
@@ -151,7 +165,7 @@ def send_emails_from_dataframe_enhanced(
     config_queue = deque(email_configs)
 
     for index, row in df.iterrows():
-        receiver_email = str(row.get("email", "")).strip()
+        receiver_email = str(row.get(email_column_actual_name, "")).strip()
 
         if not receiver_email:
             print(f"Skipping row {index+1}: 'email' column is empty or missing.")
